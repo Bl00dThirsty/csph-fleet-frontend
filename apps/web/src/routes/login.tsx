@@ -23,8 +23,8 @@ function LoginPage() {
   const [authMode, setAuthMode] = useState<'direct' | 'demo'>('direct')
 
   // Direct login state
-  const [usernameOrEmail, setUsernameOrEmail] = useState('admin')
-  const [directPassword, setDirectPassword] = useState('password')
+  const [usernameOrEmail, setUsernameOrEmail] = useState('admin.cspHq')
+  const [directPassword, setDirectPassword] = useState('Password123!')
 
   // Demo picker state
   const [selectedUserId, setSelectedUserId] = useState<string>(fakeProfiles[0]!.id)
