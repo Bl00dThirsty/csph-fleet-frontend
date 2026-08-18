@@ -8,9 +8,39 @@ type UnauthorizedHandler = () => void
 
 function resolveBaseURL(override?: string): string {
   if (override) return override
-  const mode = (import.meta as any).env?.VITE_API_MODE
-  if (mode === 'mock' || !mode) return 'http://localhost:8787/api/v1'
-  return (import.meta as any).env?.VITE_API_BASE_URL ?? '/api/v1'
+  const envUrl = (import.meta as any).env?.VITE_API_BASE_URL
+  if (envUrl) return envUrl
+  return 'http://localhost:8080/api/v1'
+}
+
+function mapLoginResponseToAuthResult(raw: any): AuthResult {
+  if (!raw) {
+    throw new Error('Données d\'authentification invalides de la part du serveur')
+  }
+  if (raw.access_token && raw.user) {
+    return raw as AuthResult
+  }
+
+  const rawRole = raw.roles && raw.roles.length > 0 ? String(raw.roles[0]).replace(/^ROLE_/, '') : 'SUPERADMIN'
+  const displayName = raw.displayName || raw.username || 'Utilisateur'
+  const parts = displayName.trim().split(' ')
+  const firstName = parts[0] || 'Utilisateur'
+  const lastName = parts.slice(1).join(' ') || ''
+  const email = raw.username && raw.username.includes('@') ? raw.username : `${raw.username || 'user'}@csph.cm`
+
+  return {
+    access_token: raw.accessToken || raw.access_token,
+    refresh_token: raw.refreshToken || raw.refresh_token,
+    user: {
+      id: raw.personId || raw.username || 'user-id',
+      email: email,
+      first_name: firstName,
+      last_name: lastName,
+      system_role: rawRole.toUpperCase() as any,
+      org_id: raw.orgId || raw.organizationId,
+      org_name: raw.orgName,
+    },
+  }
 }
 
 export function createHttpAdapter(baseURL?: string): ApiAdapter {
@@ -86,14 +116,23 @@ export function createHttpAdapter(baseURL?: string): ApiAdapter {
     request,
     requestList,
     async login(creds: Credentials): Promise<AuthResult> {
-      const res = await client.post<ApiEnvelope<AuthResult>>('/auth/login', creds)
-      if (!res.data.success) throw new Error(res.data.message)
-      return res.data.data as AuthResult
+      const payload = {
+        username: creds.email || (creds as any).username,
+        password: creds.password,
+      }
+      const res = await client.post<ApiEnvelope<any>>('/auth/login', payload)
+      if (!res.data.success) throw new Error(res.data.message || 'Échec de la connexion')
+      return mapLoginResponseToAuthResult(res.data.data)
     },
     async refresh(refresh_token: string): Promise<AuthResult> {
-      const res = await client.post<ApiEnvelope<AuthResult>>('/auth/refresh', { refresh_token })
-      if (!res.data.success) throw new Error(res.data.message)
-      return res.data.data as AuthResult
+      const res = await client.post<ApiEnvelope<any>>('/auth/refresh', { refreshToken: refresh_token })
+      if (!res.data.success) throw new Error(res.data.message || 'Échec du rafraîchissement de la session')
+      const data = res.data.data
+      return {
+        access_token: data.accessToken || data.access_token,
+        refresh_token: data.refreshToken || data.refresh_token || refresh_token,
+        user: data.user,
+      }
     },
     setAccessTokenGetter(getter) { getAccessToken = getter },
     setOnUnauthorized(handler) { onUnauthorized = handler },

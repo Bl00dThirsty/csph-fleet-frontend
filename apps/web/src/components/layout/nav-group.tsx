@@ -55,6 +55,17 @@ export function NavGroup({ title, items }: NavGroupProps) {
 }
 
 function NavBadge({ children }: { children: ReactNode }) {
+  const text = String(children || '').trim().toLowerCase()
+  const isSoon = text === 'soon' || text === 'bientôt'
+
+  if (isSoon) {
+    return (
+      <Badge className='ms-auto border border-amber-500/40 bg-amber-500/15 font-semibold text-[10px] uppercase text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded-full tracking-wider shadow-none'>
+        soon
+      </Badge>
+    )
+  }
+
   return <Badge className='rounded-full px-1 py-0 text-xs'>{children}</Badge>
 }
 

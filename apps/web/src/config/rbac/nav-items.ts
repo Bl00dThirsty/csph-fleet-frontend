@@ -282,6 +282,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Appareils IoT',
     icon: RadioTower,
     path: 'devices',
+    badge: 'soon',
     requires: ['devices.read'],
   },
   {
@@ -289,6 +290,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Tags RFID',
     icon: ScanLine,
     path: 'rfid-tags',
+    badge: 'soon',
     requires: ['rfid.read'],
   },
   {
@@ -296,6 +298,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Config GPS',
     icon: MapPin,
     path: 'gps-config',
+    badge: 'soon',
     requires: ['devices.write'],
   },
   {
@@ -303,6 +306,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Affectations appareils',
     icon: Link2,
     path: 'device-assignments',
+    badge: 'soon',
     requires: ['devices.read'],
   },
   {
@@ -310,6 +314,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Mises à jour firmware',
     icon: Upload,
     path: 'firmware',
+    badge: 'soon',
     requires: ['devices.manage'],
   },
   {
@@ -317,6 +322,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Maintenance préventive',
     icon: Wrench,
     path: 'maintenance',
+    badge: 'soon',
     requires: ['devices.manage'],
   },
 
@@ -326,6 +332,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Approvisionnements (Flux 1)',
     icon: PackageCheck,
     path: 'pickups',
+    badge: 'soon',
     requires: ['pickups.read'],
   },
   {
@@ -333,6 +340,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Suivi enlèvements',
     icon: MapIcon,
     path: 'pickup-tracking',
+    badge: 'soon',
     requires: ['pickups.read'],
   },
   {
@@ -340,6 +348,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Tournées de livraison',
     icon: Route,
     path: 'tours',
+    badge: 'soon',
     requires: ['tours.read'],
   },
   {
@@ -347,6 +356,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Suivi des tournées',
     icon: MapIcon,
     path: 'tour-tracking',
+    badge: 'soon',
     requires: ['tours.read'],
   },
 
@@ -356,6 +366,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Déclarations',
     icon: ClipboardList,
     path: 'declarations',
+    badge: 'soon',
     requires: ['declarations.read'],
   },
   {
@@ -363,6 +374,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Réconciliations',
     icon: FileBarChart,
     path: 'reconciliations',
+    badge: 'soon',
     requires: ['reconciliations.read'],
   },
   {
@@ -370,6 +382,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Redressements',
     icon: Receipt,
     path: 'redressements',
+    badge: 'soon',
     requires: ['redressements.read'],
   },
 
@@ -379,6 +392,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Anomalies',
     icon: AlertTriangle,
     path: 'anomalies',
+    badge: 'soon',
     requires: ['anomalies.read'],
   },
   {
@@ -386,6 +400,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Piste Investigation',
     icon: Search,
     path: 'anomalies/investigation',
+    badge: 'soon',
     requires: ['anomalies.investigate'],
   },
   {
@@ -393,6 +408,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Piste Technique',
     icon: ServerCog,
     path: 'anomalies/technical',
+    badge: 'soon',
     requires: ['devices.read', 'anomalies.read'],
   },
 
@@ -402,6 +418,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Scores de risque',
     icon: FileWarning,
     path: 'risk-scores',
+    badge: 'soon',
     requires: ['risks.read'],
   },
   {
@@ -409,6 +426,7 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Recompute manuel',
     icon: RefreshCw,
     path: 'recompute',
+    badge: 'soon',
     requires: ['risks.manage'],
   },
 

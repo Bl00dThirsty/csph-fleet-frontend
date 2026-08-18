@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/auth-store'
 import { useRoleStore } from '@/store/role-store'
-import { Button, Card, CardContent, Label } from '@lpg/ui'
+import { Button, Card, CardContent, Input, Label, Tabs, TabsContent, TabsList, TabsTrigger } from '@lpg/ui'
 import { fakeProfiles, type FakeProfile } from '@lpg/mock-data'
 import { UserPicker } from '@/components/login/user-picker'
 import { PasswordInput } from '@/components/password-input'
@@ -18,27 +18,52 @@ function LoginPage() {
   const login = useAuthStore((s) => s.login)
   const setActiveRole = useRoleStore((s) => s.setActiveRole)
   const navigate = useNavigate()
+
+  // Mode state: 'direct' (API backend credentials) vs 'demo' (Mock UserPicker)
+  const [authMode, setAuthMode] = useState<'direct' | 'demo'>('direct')
+
+  // Direct login state
+  const [usernameOrEmail, setUsernameOrEmail] = useState('admin')
+  const [directPassword, setDirectPassword] = useState('password')
+
+  // Demo picker state
   const [selectedUserId, setSelectedUserId] = useState<string>(fakeProfiles[0]!.id)
-  const [password, setPassword] = useState('password')
+  const [demoPassword, setDemoPassword] = useState('password')
+
   const [submitting, setSubmitting] = useState(false)
 
   const selectedUser: FakeProfile =
     fakeProfiles.find((u) => u.id === selectedUserId) ?? fakeProfiles[0]!
 
-  // Keep the active role in sync with the chosen user so nav visibility matches
-  // the persona being simulated.
   useEffect(() => {
-    setActiveRole(selectedUser.system_role as Role)
-  }, [selectedUser.system_role, setActiveRole])
+    if (authMode === 'demo') {
+      setActiveRole(selectedUser.system_role as Role)
+    }
+  }, [authMode, selectedUser.system_role, setActiveRole])
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleDirectLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await login(selectedUser.email, password)
+      await login(usernameOrEmail, directPassword)
+      toast.success('Connexion réussie au backend API !')
       navigate({ to: '/' })
-    } catch {
-      toast.error('Échec de la connexion. Vérifiez vos identifiants.')
+    } catch (err: any) {
+      toast.error(err?.message || 'Échec de la connexion. Vérifiez vos identifiants.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDemoLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      await login(selectedUser.email, demoPassword)
+      toast.success(`Connecté sous le profil ${selectedUser.first_name} ${selectedUser.last_name}`)
+      navigate({ to: '/' })
+    } catch (err: any) {
+      toast.error(err?.message || 'Échec de la connexion démo.')
     } finally {
       setSubmitting(false)
     }
@@ -55,8 +80,7 @@ function LoginPage() {
           <div className='space-y-3'>
             <h2 className='text-3xl font-bold tracking-tight text-foreground'>CSPH</h2>
             <p className='text-muted-foreground max-w-xs leading-relaxed'>
-              Console de gestion de flotte. Connectez-vous pour accéder à votre
-              espace de travail.
+              Console de gestion de flotte LPG. Authentification centralisée API &amp; Microservices.
             </p>
           </div>
           <p className='text-sm text-muted-foreground'>
@@ -75,37 +99,78 @@ function LoginPage() {
             <div className='space-y-1 mb-6'>
               <h1 className='text-2xl font-bold tracking-tight'>Connexion</h1>
               <p className='text-sm text-muted-foreground'>
-                Sélectionnez un compte de démonstration pour vous connecter
+                Accédez à la plateforme de gestion de livraison GPL
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className='space-y-5'>
-              <div className='space-y-2'>
-                <Label htmlFor='user'>Utilisateur</Label>
-                <UserPicker
-                  users={fakeProfiles}
-                  value={selectedUserId}
-                  onChange={setSelectedUserId}
-                />
-              </div>
+            <Tabs value={authMode} onValueChange={(val) => setAuthMode(val as 'direct' | 'demo')} className='w-full'>
+              <TabsList className='grid w-full grid-cols-2 mb-6'>
+                <TabsTrigger value='direct'>API Backend</TabsTrigger>
+                <TabsTrigger value='demo'>Compte Démo</TabsTrigger>
+              </TabsList>
 
-              <div className='space-y-2'>
-                <Label htmlFor='password'>Mot de passe</Label>
-                <PasswordInput
-                  id='password'
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <p className='text-xs text-muted-foreground'>
-                  Mode démo — n'importe quel mot de passe est accepté.
-                </p>
-              </div>
+              <TabsContent value='direct'>
+                <form onSubmit={handleDirectLogin} className='space-y-5'>
+                  <div className='space-y-2'>
+                    <Label htmlFor='usernameOrEmail'>Identifiant (Email / Nom d'utilisateur)</Label>
+                    <Input
+                      id='usernameOrEmail'
+                      placeholder='admin ou email@csph.cm'
+                      value={usernameOrEmail}
+                      onChange={(e) => setUsernameOrEmail(e.target.value)}
+                      required
+                    />
+                  </div>
 
-              <Button type='submit' className='w-full' disabled={submitting}>
-                {submitting ? 'Connexion…' : 'Se connecter'}
-              </Button>
-            </form>
+                  <div className='space-y-2'>
+                    <Label htmlFor='directPassword'>Mot de passe</Label>
+                    <PasswordInput
+                      id='directPassword'
+                      value={directPassword}
+                      onChange={(e) => setDirectPassword(e.target.value)}
+                      required
+                    />
+                    <p className='text-xs text-muted-foreground'>
+                      Connexion au microservice <code className='bg-muted px-1 rounded'>auth-service</code> via l'API Gateway.
+                    </p>
+                  </div>
+
+                  <Button type='submit' className='w-full' disabled={submitting}>
+                    {submitting ? 'Connexion en cours…' : 'Se connecter (API)'}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value='demo'>
+                <form onSubmit={handleDemoLogin} className='space-y-5'>
+                  <div className='space-y-2'>
+                    <Label htmlFor='user'>Sélectionner un profil démo</Label>
+                    <UserPicker
+                      users={fakeProfiles}
+                      value={selectedUserId}
+                      onChange={setSelectedUserId}
+                    />
+                  </div>
+
+                  <div className='space-y-2'>
+                    <Label htmlFor='demoPassword'>Mot de passe</Label>
+                    <PasswordInput
+                      id='demoPassword'
+                      value={demoPassword}
+                      onChange={(e) => setDemoPassword(e.target.value)}
+                      required
+                    />
+                    <p className='text-xs text-muted-foreground'>
+                      Simule immédiatement le rôle et les autorisations du persona choisi.
+                    </p>
+                  </div>
+
+                  <Button type='submit' className='w-full' disabled={submitting}>
+                    {submitting ? 'Connexion…' : 'Se connecter (Démo)'}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
