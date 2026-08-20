@@ -61,9 +61,14 @@ export function TourActions({
     [tour, activeRole],
   )
 
-  function handleAction(action: TourAction) {
+  async function handleAction(action: TourAction) {
     try {
-      const updated = useToursStore.getState().performAction(tour.id, action)
+      const extra: any = {}
+      if (action === 'close') {
+        extra.loadedQuantity = tour.requested_quantity
+        extra.deliveredQuantity = tour.requested_quantity
+      }
+      const updated = await useToursStore.getState().performActionAsync(tour.id, action, extra)
       toast.success(`${tour.reference} — ${TOUR_ACTION_LABELS[action]}`)
       onPerformed?.(updated)
     } catch (err) {

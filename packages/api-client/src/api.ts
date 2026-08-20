@@ -108,23 +108,111 @@ export function createApi(adapter: ApiAdapter) {
       return request<any>(`/pickup-requests/${id}/complete`, { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json' } })
     },
 
-    // Delivery tours
-    tourStart(id: string, body: { started_at: string; lat: number; lng: number }) {
-      return request<any>(`/delivery-tours/${id}/start`, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
+    // Delivery tours (Spring Boot tour-service lifecycle)
+    tours: {
+      list(page = 0, size = 50) {
+        return adapter.requestList<any>(`/tours?page=${page}&size=${size}`)
+      },
+      get(id: string) {
+        return request<any>(`/tours/${id}`)
+      },
+      create(body: any) {
+        return request<any>('/tours', {
+          method: 'POST',
+          body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      update(id: string, body: any) {
+        return request<any>(`/tours/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      delete(id: string) {
+        return request<void>(`/tours/${id}`, { method: 'DELETE' })
+      },
+      start(id: string) {
+        return request<any>(`/tours/${id}/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      close(id: string, loadedQuantity?: number, deliveredQuantity?: number) {
+        const query = new URLSearchParams()
+        if (loadedQuantity != null) query.set('loadedQuantity', String(loadedQuantity))
+        if (deliveredQuantity != null) query.set('deliveredQuantity', String(deliveredQuantity))
+        const qStr = query.toString() ? `?${query.toString()}` : ''
+        return request<any>(`/tours/${id}/close${qStr}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      cancel(id: string, reason?: string) {
+        const qStr = reason ? `?reason=${encodeURIComponent(reason)}` : ''
+        return request<any>(`/tours/${id}/cancel${qStr}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      assignDriver(id: string, driverId?: string, livreurPersonId?: string) {
+        const query = new URLSearchParams()
+        if (driverId) query.set('driverId', driverId)
+        if (livreurPersonId) query.set('livreurPersonId', livreurPersonId)
+        const qStr = query.toString() ? `?${query.toString()}` : ''
+        return request<any>(`/tours/${id}/assign-driver${qStr}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      assignVehicle(id: string, vehicleId: string) {
+        return request<any>(`/tours/${id}/assign-vehicle?vehicleId=${encodeURIComponent(vehicleId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      getCheckpoints(tourId: string) {
+        return request<any[]>(`/tours/${tourId}/checkpoints`)
+      },
+      addCheckpoint(tourId: string, checkpoint: any) {
+        return request<any>(`/tours/${tourId}/checkpoints`, {
+          method: 'POST',
+          body: JSON.stringify(checkpoint),
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      validateCheckpoint(checkpointId: string) {
+        return request<any>(`/tours/checkpoints/${checkpointId}/validate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      skipCheckpoint(checkpointId: string, reason: string) {
+        return request<any>(`/tours/checkpoints/${checkpointId}/skip?reason=${encodeURIComponent(reason)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
     },
-    tourClose(id: string, body: { closed_at: string }) {
-      return request<any>(`/delivery-tours/${id}/close`, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
+
+    // Legacy tour helpers
+    tourStart(id: string, body?: { started_at?: string; lat?: number; lng?: number }) {
+      return request<any>(`/tours/${id}/start`, { method: 'POST', body: JSON.stringify(body || {}), headers: { 'Content-Type': 'application/json' } })
+    },
+    tourClose(id: string, body?: { closed_at?: string; loadedQuantity?: number; deliveredQuantity?: number }) {
+      return request<any>(`/tours/${id}/close`, { method: 'POST', body: JSON.stringify(body || {}), headers: { 'Content-Type': 'application/json' } })
     },
     tourReplay(id: string) {
-      return request<any>(`/delivery-tours/${id}/replay`)
+      return request<any>(`/tours/${id}/replay`)
     },
 
     // Checkpoints
     checkpointReach(id: string, body: { lat: number; lng: number }) {
-      return request<any>(`/checkpoints/${id}/reach`, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
+      return request<any>(`/tours/checkpoints/${id}/validate`, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
     },
     checkpointSkip(id: string, reason: string) {
-      return request<any>(`/checkpoints/${id}/skip`, { method: 'POST', body: JSON.stringify({ reason }), headers: { 'Content-Type': 'application/json' } })
+      return request<any>(`/tours/checkpoints/${id}/skip?reason=${encodeURIComponent(reason)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
     },
 
     // Scan events

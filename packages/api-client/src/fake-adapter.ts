@@ -50,6 +50,7 @@ const COLLECTIONS: Record<string, unknown[]> = {
   transporter_contracts: curated.transporter_contracts,
   pickup_requests: curated.pickup_requests,
   delivery_tours: curated.delivery_tours,
+  tours: curated.delivery_tours,
   checkpoints: curated.checkpoints,
   scan_events: curated.scan_events,
   declarations: curated.declarations,

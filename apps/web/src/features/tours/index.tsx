@@ -1,15 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { PageShell, SectionCard } from '@/components/layout/page'
+import { Button } from '@lpg/ui'
+import { useToursStore } from '@/store/tours-store'
 import { TourActiveHeader } from './components/tour-active-header'
 import { ToursTable } from './components/tours-table'
-import { getTourActivity, type TourSlice } from './data/tour-activity'
+import { TourCreateDialog } from './components/tour-create-dialog'
+import { type TourSlice } from './data/tour-activity'
 
 const SLICES: { value: TourSlice; label: string }[] = [
   { value: 'ALL', label: 'Toutes' },
   { value: 'INTERNAL', label: 'Internes' },
-  { value: 'EXTERNAL', label: 'Externalisees' },
+  { value: 'EXTERNAL', label: 'Externalisées' },
   { value: 'PENDING', label: 'En attente' },
   { value: 'ACTIVE', label: 'Actives' },
   { value: 'HISTORY', label: 'Historique' },
@@ -18,9 +22,14 @@ const SLICES: { value: TourSlice; label: string }[] = [
 export function ToursPage() {
   const navigate = useNavigate()
   const [slice, setSlice] = useState<TourSlice>('ALL')
-  const tours = getTourActivity(slice)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const tours = useToursStore((s) => s.views(slice))
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
   const selectedTrip = tours.find((t) => t.id === selectedId) ?? tours[0]
+
+  useEffect(() => {
+    useToursStore.getState().fetchTours()
+  }, [])
 
   function openDetail(id: string) {
     navigate({ to: '/tour-tracking/$tourId', params: { tourId: id } })
@@ -28,10 +37,20 @@ export function ToursPage() {
 
   return (
     <PageShell>
-      <PageHeader
-        title='Tournées de livraison'
-        description='Flux 2 — livraisons creees par les marketeurs et executees en interne ou par un transporteur.'
-      />
+      <div className='flex flex-wrap items-center justify-between gap-4'>
+        <PageHeader
+          title='Tournées de livraison'
+          description='Flux 2 — livraisons créées par les marketeurs et exécutées en interne ou par un transporteur.'
+        />
+        <Button
+          onClick={() => setCreateDialogOpen(true)}
+          className='flex items-center gap-2'
+        >
+          <Plus className='h-4 w-4' />
+          Nouvelle tournée
+        </Button>
+      </div>
+
       {selectedTrip && (
         <TourActiveHeader
           trip={selectedTrip}
@@ -39,6 +58,7 @@ export function ToursPage() {
           onSelectTrip={(id) => setSelectedId(id)}
         />
       )}
+
       <SectionCard>
         <div className='mb-4 flex flex-wrap gap-2'>
           {SLICES.map((s) => (
@@ -62,6 +82,14 @@ export function ToursPage() {
           onOpenDetails={(row) => openDetail(row.id)}
         />
       </SectionCard>
+
+      <TourCreateDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={() => {
+          setSelectedId(undefined)
+        }}
+      />
     </PageShell>
   )
 }

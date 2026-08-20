@@ -348,7 +348,6 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Tournées de livraison',
     icon: Route,
     path: 'tours',
-    badge: 'soon',
     requires: ['tours.read'],
   },
   {
@@ -356,7 +355,6 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Suivi des tournées',
     icon: MapIcon,
     path: 'tour-tracking',
-    badge: 'soon',
     requires: ['tours.read'],
   },
 

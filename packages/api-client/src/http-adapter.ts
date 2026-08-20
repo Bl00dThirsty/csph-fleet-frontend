@@ -43,6 +43,79 @@ function mapLoginResponseToAuthResult(raw: any): AuthResult {
   }
 }
 
+export function mapBackendCheckpointToCheckpoint(raw: any): any {
+  if (!raw || typeof raw !== 'object') return raw
+  return {
+    id: raw.id,
+    tour_id: raw.tourId || raw.tour_id || raw.tourneeId || raw.tournee_id,
+    tournee_id: raw.tourId || raw.tour_id || raw.tourneeId || raw.tournee_id || '',
+    site_id: raw.siteId || raw.site_id,
+    client_site_id: raw.clientSiteId || raw.client_site_id,
+    sequence: raw.sequence ?? 0,
+    expected_arrival: raw.expectedArrival || raw.expected_arrival,
+    actual_arrival: raw.actualArrival || raw.actual_arrival,
+    status: raw.status || 'PENDING',
+    status_description: raw.statusDescription || raw.status_description,
+    status_date: raw.statusDate || raw.status_date,
+    skip_reason: raw.skipReason || raw.skip_reason,
+    created_at: raw.createdAt || raw.created_at,
+    updated_at: raw.changedate || raw.updated_at,
+    created_by: raw.createdBy || raw.created_by,
+    updated_by: raw.changeby || raw.updated_by,
+  }
+}
+
+export function mapBackendTourToDeliveryTour(raw: any): any {
+  if (!raw || typeof raw !== 'object') return raw
+  const checkpoints = Array.isArray(raw.checkpoints)
+    ? raw.checkpoints.map(mapBackendCheckpointToCheckpoint)
+    : undefined
+
+  return {
+    id: raw.id,
+    tour_code: raw.tourCode || raw.tour_code,
+    marketeur_org_id: raw.marketerOrganizationId || raw.marketeur_org_id,
+    execution_mode: raw.executionMode || raw.execution_mode,
+    transporter_org_id: raw.transporterOrganizationId || raw.transporter_org_id,
+    vehicle_id: raw.vehicleId || raw.vehicle_id,
+    driver_id: raw.driverId || raw.driver_id,
+    livreur_user_id: raw.livreurPersonId || raw.livreur_user_id,
+    assigned_by_transporter_user_id: raw.assignedByTransporterPersonId || raw.assigned_by_transporter_user_id,
+    transporter_assigned_at: raw.transporterAssignedAt || raw.transporter_assigned_at,
+    sent_to_transporter_at: raw.sentToTransporterAt || raw.sent_to_transporter_at,
+    type: raw.type,
+    status: raw.status,
+    status_description: raw.statusDescription || raw.status_description,
+    status_date: raw.statusDate || raw.status_date,
+    requested_quantity: raw.requestedQuantity ?? raw.requested_quantity ?? 0,
+    loaded_quantity: raw.loadedQuantity ?? raw.loaded_quantity,
+    delivered_quantity: raw.deliveredQuantity ?? raw.delivered_quantity,
+    started_at: raw.startedAt || raw.started_at,
+    closed_at: raw.closedAt || raw.closed_at,
+    created_at: raw.createdAt || raw.created_at,
+    updated_at: raw.changedate || raw.updated_at,
+    created_by: raw.createdBy || raw.created_by,
+    updated_by: raw.changeby || raw.updated_by,
+    checkpoints,
+  }
+}
+
+function mapTourPayloadToBackend(body: any): any {
+  if (!body || typeof body !== 'object') return body
+  const mapped: any = { ...body }
+  if (body.tour_code !== undefined) mapped.tourCode = body.tour_code
+  if (body.marketeur_org_id !== undefined) mapped.marketerOrganizationId = body.marketeur_org_id
+  if (body.execution_mode !== undefined) mapped.executionMode = body.execution_mode
+  if (body.transporter_org_id !== undefined) mapped.transporterOrganizationId = body.transporter_org_id
+  if (body.vehicle_id !== undefined) mapped.vehicleId = body.vehicle_id
+  if (body.driver_id !== undefined) mapped.driverId = body.driver_id
+  if (body.livreur_user_id !== undefined) mapped.livreurPersonId = body.livreur_user_id
+  if (body.requested_quantity !== undefined) mapped.requestedQuantity = body.requested_quantity
+  if (body.loaded_quantity !== undefined) mapped.loadedQuantity = body.loaded_quantity
+  if (body.delivered_quantity !== undefined) mapped.deliveredQuantity = body.delivered_quantity
+  return mapped
+}
+
 export function createHttpAdapter(baseURL?: string): ApiAdapter {
   const client: AxiosInstance = axios.create({
     baseURL: resolveBaseURL(baseURL ?? (import.meta as any).env?.VITE_API_BASE_URL),
@@ -88,27 +161,72 @@ export function createHttpAdapter(baseURL?: string): ApiAdapter {
   )
 
   async function request<T>(path: string, init?: RequestOptions): Promise<T> {
-    const res = await client.request<ApiEnvelope<T>>({
+    let body = init?.body
+    if (body && typeof body === 'string' && (path.startsWith('/tours') || path.startsWith('/delivery-tours'))) {
+      try {
+        const parsed = JSON.parse(body)
+        body = JSON.stringify(mapTourPayloadToBackend(parsed))
+      } catch {
+        // preserve body as is
+      }
+    }
+
+    const res = await client.request<any>({
       url: path,
       method: (init?.method as any) ?? 'GET',
-      data: init?.body,
+      data: body,
       headers: init?.headers,
     })
-    if (!res.data.success) throw new Error(res.data.message || 'Request failed')
-    return res.data.data as T
+    const data = res.data?.data !== undefined ? res.data.data : res.data
+    if (res.data && res.data.success === false) throw new Error(res.data.message || 'Request failed')
+
+    if (data && typeof data === 'object') {
+      if (data.tourCode || data.marketerOrganizationId) {
+        return mapBackendTourToDeliveryTour(data) as T
+      }
+      if (data.expectedArrival || data.actualArrival) {
+        return mapBackendCheckpointToCheckpoint(data) as T
+      }
+    }
+    return data as T
   }
 
   async function requestList<T>(path: string, init?: RequestOptions): Promise<ListResult<T>> {
-    const res = await client.request<ApiEnvelope<T[]>>({
+    const res = await client.request<any>({
       url: path,
       method: (init?.method as any) ?? 'GET',
       data: init?.body,
       headers: init?.headers,
     })
-    if (!res.data.success) throw new Error(res.data.message || 'Request failed')
+    if (res.data && res.data.success === false) throw new Error(res.data.message || 'Request failed')
+
+    const envelopeData = res.data?.data !== undefined ? res.data.data : res.data
+    let rawItems: any[] = []
+    let pagination: ApiPagination = { page: 1, limit: 50, total: 0, pages: 1 }
+
+    if (Array.isArray(envelopeData)) {
+      rawItems = envelopeData
+      pagination.total = rawItems.length
+    } else if (envelopeData && Array.isArray(envelopeData.content)) {
+      rawItems = envelopeData.content
+      pagination = {
+        page: (envelopeData.page ?? 0) + 1,
+        limit: envelopeData.size ?? rawItems.length,
+        total: envelopeData.totalElements ?? rawItems.length,
+        pages: envelopeData.totalPages ?? 1,
+      }
+    }
+
+    const mappedItems = rawItems.map((item) => {
+      if (item && typeof item === 'object' && (item.tourCode || item.marketerOrganizationId)) {
+        return mapBackendTourToDeliveryTour(item)
+      }
+      return item
+    })
+
     return {
-      data: (res.data.data as T[]) ?? [],
-      pagination: res.data.pagination ?? ({ page: 1, limit: 0, total: 0, pages: 0 } as ApiPagination),
+      data: mappedItems as T[],
+      pagination: res.data?.pagination ?? pagination,
     }
   }
 
