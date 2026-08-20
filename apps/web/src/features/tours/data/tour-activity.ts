@@ -164,43 +164,78 @@ export const routeAttentionOptions = [
   value: RouteEventSeverity
 }>
 
-const siteById = new Map(sites.map((site) => [site.id, site]))
+const allSites: Site[] = [
+  ...sites,
+  ...client_sites.map((cs) => ({
+    id: cs.id,
+    name: cs.name,
+    type: 'delivery-point' as const,
+    city: cs.address?.split(',')[1]?.trim() || 'Cameroun',
+    region: cs.region,
+    operator: 'Client Distributeur',
+    latitude: Array.isArray(cs.geo_point) ? cs.geo_point[0] ?? 4.05 : 4.05,
+    longitude: Array.isArray(cs.geo_point) ? cs.geo_point[1] ?? 9.76 : 9.76,
+    description: cs.address || '',
+    status: 'active' as const,
+  })),
+]
+
+const siteById = new Map(allSites.map((site) => [site.id, site]))
 const truckById = new Map(trucks.map((truck) => [truck.id, truck]))
 const driverById = new Map(drivers.map((driver) => [driver.id, driver]))
 
-function requireSite(siteId: string) {
+function requireSite(siteId: string): Site {
+  if (!siteId) return placeholderSite()
   const site = siteById.get(siteId)
-
-  if (!site) {
-    throw new Error(`Unknown site "${siteId}"`)
+  if (site) return site
+  return {
+    id: siteId,
+    name: 'Site de livraison',
+    type: 'delivery-point',
+    city: 'Cameroun',
+    region: 'LITTORAL',
+    operator: 'Client',
+    latitude: 4.0511,
+    longitude: 9.7679,
+    description: '',
+    status: 'active',
   }
-
-  return site
 }
 
 function placeholderSite(): Site {
   return {
     id: '',
     name: '—',
-    type: 'DEPOT' as Site['type'],
+    type: 'depot',
     city: '',
     region: '',
     operator: '',
     latitude: 0,
     longitude: 0,
     description: '',
-    status: 'inactive' as Site['status'],
+    status: 'inactive',
   }
 }
 
-function requireTruck(truckId: string) {
+function requireTruck(truckId: string): Truck {
+  if (!truckId) return trucks[0]!
   const truck = truckById.get(truckId)
-
-  if (!truck) {
-    throw new Error(`Unknown truck "${truckId}"`)
-  }
-
-  return truck
+  if (truck) return truck
+  return (
+    trucks[0] ?? {
+      id: truckId,
+      license_plate: 'LT-0000-XX',
+      tenant_name: 'SCTM Interne',
+      org_id: 'org-0002-sctm-0000-000000000001',
+      region: 'LITTORAL' as const,
+      type: 'VRAC' as const,
+      tournee_status: 'INPROGRESS' as const,
+      requested_quantity: 20,
+      lat: 4.0511,
+      lng: 9.7679,
+      risk_level: 'FAIBLE' as const,
+    }
+  )
 }
 
 export function routeStatusFromTournee(status: TourneeStatus): RouteTripStatus {

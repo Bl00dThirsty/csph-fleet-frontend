@@ -34,7 +34,7 @@ export function ToursPage() {
   const tours = useMemo(() => {
     if (role === 'MARKETEUR' && (user?.org_id || user?.org_name)) {
       const orgKey = (user.org_name || user.org_id || '').toLowerCase()
-      const filtered = allTours.filter((t) => t.marketeur_name.toLowerCase().includes('sctm') || (orgKey && t.marketeur_name.toLowerCase().includes(orgKey)))
+      const filtered = allTours.filter((t) => t.marketeur_name.toLowerCase().includes('sctm') || t.marketeur_name.toLowerCase().includes('gpl') || (orgKey && t.marketeur_name.toLowerCase().includes(orgKey)))
       return filtered.length > 0 ? filtered : allTours
     }
     return allTours
