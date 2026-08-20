@@ -895,12 +895,24 @@ function buildRecentActivities(
     .slice(0, 6)
 }
 
-export function buildDashboardView(): DashboardView {
+export function buildDashboardView(role?: string, _orgId?: string, orgName?: string): DashboardView {
   const routeViews = getRouteTripsView()
-  const routeSummary = buildRouteSummary(routeViews)
+  const isMarketer = role === 'MARKETEUR'
+  const isTransporter = role === 'TRANSPORTEUR'
+
+  let filteredRoutes = routeViews
+  if (isMarketer) {
+    filteredRoutes = routeViews.filter((r) => r.marketeur_name.toLowerCase().includes('sctm') || r.marketeur_name.toLowerCase().includes('gpl') || (orgName && r.marketeur_name.toLowerCase().includes(orgName.toLowerCase())))
+    if (filteredRoutes.length === 0) filteredRoutes = routeViews.slice(0, 2)
+  } else if (isTransporter) {
+    filteredRoutes = routeViews.filter((r) => (r.transporter_name && r.transporter_name.toLowerCase().includes('express')) || (orgName && r.transporter_name?.toLowerCase().includes(orgName.toLowerCase())))
+    if (filteredRoutes.length === 0) filteredRoutes = routeViews.slice(0, 2)
+  }
+
+  const routeSummary = buildRouteSummary(filteredRoutes)
   const reserveSites = buildReserveSites()
   const alerts = buildAlerts(reserveSites)
-  const totalTransportedTM = routeViews.reduce(
+  const totalTransportedTM = filteredRoutes.reduce(
     (total, trip) => total + trip.loadedQuantity,
     0
   )
@@ -920,7 +932,7 @@ export function buildDashboardView(): DashboardView {
     ['PLANNED', 'INPROGRESS', 'CHECKPOINTACTIVE', 'PENDINGTRANSPORTERACK', 'ACKNOWLEDGED'].includes(truck.tournee_status)
   ).length
   const riskTrucks = trucks.filter((truck) => truck.risk_level !== 'FAIBLE').length
-  const abnormalLossTM = routeViews.reduce(
+  const abnormalLossTM = filteredRoutes.reduce(
     (total, trip) => total + trip.unaccounted,
     0
   )
@@ -931,21 +943,21 @@ export function buildDashboardView(): DashboardView {
     alertCount: alerts.length,
     serviceRate: routeSummary.onTimeRate,
   })
-  const generatedAt = routeViews.reduce((latest, trip) => {
+  const generatedAt = filteredRoutes.reduce((latest, trip) => {
     return new Date(trip.lastUpdatedAt) > new Date(latest)
       ? trip.lastUpdatedAt
       : latest
-  }, routeViews[0]?.lastUpdatedAt ?? new Date().toISOString())
+  }, filteredRoutes[0]?.lastUpdatedAt ?? new Date().toISOString())
   const fleets = buildFleetSummaries(totalTransportedTM)
   const flowBreakdown = buildFlowBreakdown(fleets, totalTransportedTM)
   const reserveSummary = buildReserveSummary(reserveSites)
   const routeContributions = buildRouteContributions(
-    routeViews,
+    filteredRoutes,
     totalTransportedTM,
     totalDeliveredTM
   )
   const recentActivities = buildRecentActivities(
-    routeViews,
+    filteredRoutes,
     reserveSites,
     generatedAt
   )
@@ -977,7 +989,7 @@ export function buildDashboardView(): DashboardView {
     metrics: [
       {
         id: 'transported',
-        title: 'Volumes transportés',
+        title: isMarketer ? 'Volumes transportés (Mes flux)' : isTransporter ? 'Volumes acheminés' : 'Volumes nationaux transportés',
         value: totalTransportedTM,
         unit: 'TM',
         tone: 'sky',
@@ -988,12 +1000,12 @@ export function buildDashboardView(): DashboardView {
         deltaDirection: getTrendDirection(
           dailyCurrent.transportedTM - dailyPrevious.transportedTM
         ),
-        description: "Volume chargé sur l'ensemble des tournées visibles.",
+        description: isMarketer ? 'Volume chargé sur vos tournées de distribution.' : "Volume chargé sur l'ensemble des tournées visibles.",
         highlight: `${routeSummary.activeTrips} tournées actives`,
       },
       {
         id: 'reserve',
-        title: 'GPL en réserve',
+        title: isMarketer ? 'Stock GPL centres emplisseurs' : 'GPL en réserve utile',
         value: totalReserveTM,
         unit: 'TM',
         tone: 'emerald',
@@ -1004,12 +1016,12 @@ export function buildDashboardView(): DashboardView {
         deltaDirection: getTrendDirection(
           dailyCurrent.reserveTM - dailyPrevious.reserveTM
         ),
-        description: 'Stock pilotable sur les sites de charge et de reprise.',
+        description: isMarketer ? 'Stock disponible sur vos centres emplisseurs.' : 'Stock pilotable sur les sites de charge et de reprise.',
         highlight: `${round((totalReserveTM / reserveCapacityTM) * 100)}% de remplissage`,
       },
       {
         id: 'delivered',
-        title: 'Flux livrés',
+        title: isMarketer ? 'Volumes livrés aux clients' : 'Flux livrés certifiés',
         value: totalDeliveredTM,
         unit: 'TM',
         tone: 'amber',
@@ -1020,12 +1032,12 @@ export function buildDashboardView(): DashboardView {
         deltaDirection: getTrendDirection(
           dailyCurrent.delivered - dailyPrevious.delivered
         ),
-        description: 'Volume déjà délivré ou déposé sur les étapes confirmées.',
+        description: isMarketer ? 'Volume délivré et validé sur vos étapes de livraison.' : 'Volume déjà délivré ou déposé sur les étapes confirmées.',
         highlight: `${routeSummary.onTimeRate}% de service`,
       },
       {
         id: 'alerts',
-        title: 'Alertes ouvertes',
+        title: isMarketer ? 'Mes alertes opérationnelles' : 'Alertes & Anomalies réseau',
         value: alerts.length,
         unit: 'count',
         tone: 'rose',

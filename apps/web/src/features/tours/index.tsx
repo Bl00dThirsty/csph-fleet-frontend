@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { PageShell, SectionCard } from '@/components/layout/page'
 import { Button } from '@lpg/ui'
 import { useToursStore } from '@/store/tours-store'
+import { useAuthStore } from '@/store/auth-store'
+import { useRoleStore } from '@/store/role-store'
+import type { Role } from '@/config/rbac/roles'
 import { TourActiveHeader } from './components/tour-active-header'
 import { ToursTable } from './components/tours-table'
 import { TourCreateDialog } from './components/tour-create-dialog'
@@ -21,9 +24,22 @@ const SLICES: { value: TourSlice; label: string }[] = [
 
 export function ToursPage() {
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
+  const activeRole = useRoleStore((s) => s.activeRole)
+  const role = activeRole || (user?.system_role as Role) || 'SUPERADMIN'
   const [slice, setSlice] = useState<TourSlice>('ALL')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const tours = useToursStore((s) => s.views(slice))
+  const allTours = useToursStore((s) => s.views(slice))
+
+  const tours = useMemo(() => {
+    if (role === 'MARKETEUR' && (user?.org_id || user?.org_name)) {
+      const orgKey = (user.org_name || user.org_id || '').toLowerCase()
+      const filtered = allTours.filter((t) => t.marketeur_name.toLowerCase().includes('sctm') || (orgKey && t.marketeur_name.toLowerCase().includes(orgKey)))
+      return filtered.length > 0 ? filtered : allTours
+    }
+    return allTours
+  }, [allTours, role, user?.org_id, user?.org_name])
+
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
   const selectedTrip = tours.find((t) => t.id === selectedId) ?? tours[0]
 

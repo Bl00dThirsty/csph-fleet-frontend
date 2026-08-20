@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@lpg/ui'
@@ -13,12 +13,24 @@ import { getPickupSummary, type Pickup } from './data/pickups'
 import type { PickupRequest } from '@lpg/types'
 import type { Role } from '@/config/rbac/roles'
 
+import { useAuthStore } from '@/store/auth-store'
+
 export function PickupsPage({ role }: { role: Role }) {
-  const rows = usePickupsStore((s) => s.getPickupsView())
+  const user = useAuthStore((s) => s.user)
+  const allRows = usePickupsStore((s) => s.getPickupsView())
   const assignedVehicles = usePickupsStore((s) => s.assignedVehicles)
   const [createOpen, setCreateOpen] = useState(false)
   const [validateOpen, setValidateOpen] = useState<Pickup | null>(null)
   const [detailOpen, setDetailOpen] = useState<Pickup | null>(null)
+
+  const rows = useMemo(() => {
+    if (role === 'MARKETEUR' && (user?.org_id || user?.org_name)) {
+      const orgKey = (user.org_name || user.org_id || '').toLowerCase()
+      const filtered = allRows.filter((r) => r.marketeur_name.toLowerCase().includes('sctm') || (orgKey && r.marketeur_name.toLowerCase().includes(orgKey)))
+      return filtered.length > 0 ? filtered : allRows
+    }
+    return allRows
+  }, [allRows, role, user?.org_id, user?.org_name])
 
   useEffect(() => {
     usePickupsStore.getState().fetchPickups()

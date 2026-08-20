@@ -31,6 +31,8 @@ import {
 import { type Role } from '@/config/rbac/roles'
 import { Main } from '@/components/layout/main'
 import { formatTm, formatBtl } from '@/features/map/utils/format'
+import { useAuthStore } from '@/store/auth-store'
+import { useRoleStore } from '@/store/role-store'
 import {
   buildDashboardView,
   type DashboardActivityStatus,
@@ -43,7 +45,14 @@ import {
 } from './data/dashboard'
 
 export function DashboardPage({ role }: { role?: Role } = {}) {
-  const dashboard = useMemo(() => buildDashboardView(), [])
+  const user = useAuthStore((s) => s.user)
+  const activeRole = useRoleStore((s) => s.activeRole)
+  const effectiveRole = role ?? activeRole ?? (user?.system_role as Role) ?? 'SUPERADMIN'
+
+  const dashboard = useMemo(
+    () => buildDashboardView(effectiveRole, user?.org_id, user?.org_name),
+    [effectiveRole, user?.org_id, user?.org_name]
+  )
   const [selectedDetailId, setSelectedDetailId] =
     useState<DashboardDetailId>('transported')
   const monthlySeries = dashboard.trendByPeriod.monthly
