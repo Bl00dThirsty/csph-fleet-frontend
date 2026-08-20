@@ -61,7 +61,7 @@ export function PickupsPage({ role }: { role: Role }) {
         title='Approvisionnements (Flux 1)'
         description={`${summary.total} requêtes — ${summary.draft} brouillon(s), ${summary.validated} validée(s), ${summary.inProgress} en cours, ${summary.completed} terminée(s).`}
         actions={
-          role === 'MARKETEUR' ? (
+          role === 'MARKETEUR' || role === 'ADMIN' || role === 'SUPERADMIN' ? (
             <Button className='gap-2' onClick={() => setCreateOpen(true)}>
               <Plus className='size-4' /> Nouvelle requête
             </Button>

@@ -88,17 +88,17 @@ describe('route-access', () => {
 
   describe('deniedPathRedirect', () => {
     it('redirects a denied role to its own landing (never loops)', () => {
-      expect(deniedPathRedirect('MARKETEUR', '/organizations')).toBe('/overview')
-      expect(deniedPathRedirect('MARKETEUR', '/marketers')).toBe('/overview')
+      expect(deniedPathRedirect('MARKETEUR', '/organizations')).toBe('/dashboard-marketeur')
+      expect(deniedPathRedirect('MARKETEUR', '/marketers')).toBe('/dashboard-marketeur')
     })
 
-    it('returns /transporters when the path is denied for TRANSPORTEUR', () => {
-      expect(deniedPathRedirect('TRANSPORTEUR', '/audit-logs')).toBe('/transporters')
+    it('returns /dashboard-transporteur when the path is denied for TRANSPORTEUR', () => {
+      expect(deniedPathRedirect('TRANSPORTEUR', '/audit-logs')).toBe('/dashboard-transporteur')
     })
 
     it('never redirects a role off its own landing (AGENTS.md §5)', () => {
-      expect(deniedPathRedirect('TRANSPORTEUR', '/transporters')).toBeNull()
-      expect(deniedPathRedirect('MARKETEUR', '/overview')).toBeNull()
+      expect(deniedPathRedirect('TRANSPORTEUR', '/dashboard-transporteur')).toBeNull()
+      expect(deniedPathRedirect('MARKETEUR', '/dashboard-marketeur')).toBeNull()
     })
   })
 })

@@ -38,11 +38,11 @@ export const LANDING_BY_ROLE: Record<Role, string> = {
   SUPERADMIN: '/dashboard',
   ADMIN: '/dashboard-admin',
   SUPERVISOR: '/dashboard-supervisor',
-  INTEGRATEUR: '/overview',
+  INTEGRATEUR: '/dashboard-supervisor',
   AGENT: '/overview',
-  MARKETEUR: '/overview',
-  TRANSPORTEUR: '/transporters',
-  LIVREUR: '/overview',
+  MARKETEUR: '/dashboard-marketeur',
+  TRANSPORTEUR: '/dashboard-transporteur',
+  LIVREUR: '/tours',
 }
 
 /** Delegates entirely to the permission-driven projection. */
