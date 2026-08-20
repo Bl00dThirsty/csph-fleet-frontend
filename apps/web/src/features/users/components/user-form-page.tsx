@@ -3,16 +3,25 @@ import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
+  BarChart3,
   Building2,
   CheckCircle2,
+  ChevronDown,
+  ChevronsUpDown,
+  FileText,
+  Fuel,
   KeyRound,
   Lock,
   Mail,
+  Package,
   Phone,
   Save,
   Shield,
+  ShieldAlert,
   ShieldCheck,
+  Truck,
   User as UserIcon,
+  Users2,
 } from 'lucide-react'
 import {
   Badge,
@@ -23,6 +32,9 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Input,
   Label,
   Select,
@@ -125,6 +137,40 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
     }
   })
 
+  // Collapsible accordion state for permission categories
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({
+    approvisionnements: false,
+    livraisons: false,
+    flotte: false,
+    declarations: true,
+    supervision: true,
+    reporting: true,
+    administration: true,
+  })
+
+  function toggleCategoryCollapse(catKey: string) {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [catKey]: !prev[catKey],
+    }))
+  }
+
+  function expandAll() {
+    setCollapsedCategories({})
+  }
+
+  function collapseAll() {
+    setCollapsedCategories({
+      approvisionnements: true,
+      livraisons: true,
+      flotte: true,
+      declarations: true,
+      supervision: true,
+      reporting: true,
+      administration: true,
+    })
+  }
+
   // Filter available predefined profiles according to target organization or actor role
   const availableProfiles = useMemo(() => {
     if (effectiveRole === 'MARKETEUR') {
@@ -189,6 +235,26 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
 
     return Object.entries(categories).filter(([_, val]) => val.items.length > 0)
   }, [])
+
+  function getCategoryIcon(catKey: string) {
+    switch (catKey) {
+      case 'approvisionnements':
+        return <Package className='h-4 w-4' />
+      case 'livraisons':
+        return <Truck className='h-4 w-4' />
+      case 'flotte':
+        return <Fuel className='h-4 w-4' />
+      case 'declarations':
+        return <FileText className='h-4 w-4' />
+      case 'supervision':
+        return <ShieldAlert className='h-4 w-4' />
+      case 'reporting':
+        return <BarChart3 className='h-4 w-4' />
+      case 'administration':
+      default:
+        return <Users2 className='h-4 w-4' />
+    }
+  }
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -532,76 +598,172 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
           </CardContent>
         </Card>
 
-        {/* Section 4 : Personnalisation Granulaire des Permissions */}
+        {/* Section 4 : Personnalisation Granulaire des Permissions en mode Collapsible */}
         <Card className='border-border/60 shadow-sm'>
           <CardHeader className='pb-3'>
-            <div className='flex items-center justify-between'>
+            <div className='flex flex-wrap items-center justify-between gap-3'>
               <div className='flex items-center gap-2 text-primary'>
                 <Lock className='h-5 w-5' />
-                <CardTitle className='text-base font-semibold'>
-                  4. Personnalisation Granulaire des Permissions
-                </CardTitle>
-              </div>
-              <Badge variant='secondary' className='text-xs'>
-                {form.custom_permissions.length} droit(s) spécifique(s) actif(s)
-              </Badge>
-            </div>
-            <CardDescription>
-              Les droits en vert font partie intégrante du rôle de base. Vous pouvez cocher des droits spécifiques additionnels (en bleu) pour accorder des privilèges sur-mesure.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-6'>
-            {permissionCategories.map(([catKey, category]) => (
-              <div key={catKey} className='space-y-2 border-b border-border/30 pb-4 last:border-0 last:pb-0'>
-                <h4 className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
-                  {category.label}
-                </h4>
-                <div className='grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3'>
-                  {category.items.map((perm) => {
-                    const isBaseGranted = baseRolePermissions.includes(perm.code as PermissionCode)
-                    const isCustomGranted = form.custom_permissions.includes(perm.code)
-                    const isChecked = isBaseGranted || isCustomGranted
-
-                    return (
-                      <label
-                        key={perm.code}
-                        className={`flex items-start gap-2.5 rounded-lg border p-2.5 text-xs transition-colors cursor-pointer ${
-                          isBaseGranted
-                            ? 'border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 cursor-default'
-                            : isCustomGranted
-                              ? 'border-sky-500/40 bg-sky-500/10'
-                              : 'border-border/50 hover:bg-muted/40'
-                        }`}
-                      >
-                        <Checkbox
-                          checked={isChecked}
-                          disabled={isBaseGranted}
-                          onCheckedChange={() => toggleCustomPermission(perm.code)}
-                          className='mt-0.5'
-                        />
-                        <div className='flex flex-col gap-0.5 leading-tight'>
-                          <span className='font-medium text-foreground'>
-                            {perm.label}
-                          </span>
-                          <span className='font-mono text-[10px] text-muted-foreground'>
-                            {perm.code}
-                          </span>
-                          {isBaseGranted ? (
-                            <span className='text-[10px] font-semibold text-emerald-600 dark:text-emerald-400'>
-                              ✓ Inclus dans le rôle
-                            </span>
-                          ) : isCustomGranted ? (
-                            <span className='text-[10px] font-semibold text-sky-600 dark:text-sky-400'>
-                              ★ Droit accordé
-                            </span>
-                          ) : null}
-                        </div>
-                      </label>
-                    )
-                  })}
+                <div>
+                  <CardTitle className='text-base font-semibold'>
+                    4. Personnalisation Granulaire des Permissions
+                  </CardTitle>
+                  <CardDescription>
+                    Sections déroulantes par domaine d’activité. Cochez les droits additionnels souhaités pour ce collaborateur.
+                  </CardDescription>
                 </div>
               </div>
-            ))}
+              <div className='flex items-center gap-2'>
+                <Badge variant='secondary' className='text-xs font-semibold'>
+                  {form.custom_permissions.length} droit(s) spécifique(s) accordé(s)
+                </Badge>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    const allOpen = Object.values(collapsedCategories).every((v) => !v)
+                    if (allOpen) collapseAll()
+                    else expandAll()
+                  }}
+                  className='h-8 text-xs flex items-center gap-1.5'
+                >
+                  <ChevronsUpDown className='h-3.5 w-3.5' />
+                  {Object.values(collapsedCategories).every((v) => !v)
+                    ? 'Tout replier'
+                    : 'Tout déplier'}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className='space-y-3.5'>
+            {permissionCategories.map(([catKey, category]) => {
+              const isCollapsed = collapsedCategories[catKey] ?? false
+              const activeCountInCat = category.items.filter((p) =>
+                baseRolePermissions.includes(p.code as PermissionCode) || form.custom_permissions.includes(p.code)
+              ).length
+              const customCountInCat = category.items.filter((p) =>
+                form.custom_permissions.includes(p.code) && !baseRolePermissions.includes(p.code as PermissionCode)
+              ).length
+
+              return (
+                <Collapsible
+                  key={catKey}
+                  open={!isCollapsed}
+                  onOpenChange={() => toggleCategoryCollapse(catKey)}
+                  className='rounded-xl border border-border/70 bg-card overflow-hidden shadow-2xs transition-all'
+                >
+                  <CollapsibleTrigger asChild>
+                    <div className='flex items-center justify-between p-3.5 cursor-pointer hover:bg-muted/40 transition-colors select-none'>
+                      <div className='flex items-center gap-3'>
+                        <div className='rounded-lg bg-primary/10 p-2 text-primary'>
+                          {getCategoryIcon(catKey)}
+                        </div>
+                        <div className='text-left'>
+                          <h4 className='text-sm font-semibold text-foreground leading-tight'>
+                            {category.label}
+                          </h4>
+                          <p className='text-xs text-muted-foreground'>
+                            {category.items.length} permission(s) au catalogue
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className='flex items-center gap-3'>
+                        <div className='flex items-center gap-1.5'>
+                          <Badge variant='outline' className='text-[11px] font-mono'>
+                            {activeCountInCat} / {category.items.length} active(s)
+                          </Badge>
+                          {customCountInCat > 0 && (
+                            <Badge variant='secondary' className='text-[11px] font-semibold text-sky-600 dark:text-sky-400'>
+                              +{customCountInCat} sur-mesure
+                            </Badge>
+                          )}
+                        </div>
+                        <div className='rounded-md p-1 hover:bg-muted text-muted-foreground'>
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform duration-200 ${
+                              !isCollapsed ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+
+                  <CollapsibleContent>
+                    <div className='border-t border-border/40 divide-y divide-border/40 bg-muted/10'>
+                      {category.items.map((perm) => {
+                        const isBaseGranted = baseRolePermissions.includes(perm.code as PermissionCode)
+                        const isCustomGranted = form.custom_permissions.includes(perm.code)
+                        const isChecked = isBaseGranted || isCustomGranted
+
+                        return (
+                          <div
+                            key={perm.code}
+                            onClick={() => {
+                              if (!isBaseGranted) toggleCustomPermission(perm.code)
+                            }}
+                            className={`flex items-center justify-between px-4 py-3 text-xs transition-colors cursor-pointer ${
+                              isBaseGranted
+                                ? 'bg-emerald-50/40 dark:bg-emerald-950/15 cursor-default'
+                                : isCustomGranted
+                                  ? 'bg-sky-50/60 dark:bg-sky-950/25 hover:bg-sky-50/80'
+                                  : 'hover:bg-muted/40'
+                            }`}
+                          >
+                            <div className='flex items-center gap-3.5 flex-1'>
+                              <Checkbox
+                                id={`perm-${perm.code}`}
+                                checked={isChecked}
+                                disabled={isBaseGranted}
+                                onCheckedChange={() => toggleCustomPermission(perm.code)}
+                                className='size-4 mt-0.5'
+                              />
+                              <div className='flex flex-col gap-0.5'>
+                                <label
+                                  htmlFor={`perm-${perm.code}`}
+                                  className={`text-sm font-medium leading-none cursor-pointer ${
+                                    isBaseGranted ? 'cursor-default text-foreground font-semibold' : 'text-foreground'
+                                  }`}
+                                >
+                                  {perm.label}
+                                </label>
+                                <span className='font-mono text-[11px] text-muted-foreground'>
+                                  {perm.code}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className='flex items-center gap-2 shrink-0 ps-3'>
+                              {isBaseGranted ? (
+                                <Badge
+                                  variant='outline'
+                                  className='border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px]'
+                                >
+                                  ✓ Inclus dans le rôle
+                                </Badge>
+                              ) : isCustomGranted ? (
+                                <Badge
+                                  variant='outline'
+                                  className='border-sky-500/40 bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold text-[11px]'
+                                >
+                                  ★ Droit accordé
+                                </Badge>
+                              ) : (
+                                <span className='text-[11px] text-muted-foreground/60 font-mono'>
+                                  Non attribué
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )
+            })}
           </CardContent>
         </Card>
 
