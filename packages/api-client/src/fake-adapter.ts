@@ -49,6 +49,7 @@ const COLLECTIONS: Record<string, unknown[]> = {
   devices: curated.devices,
   transporter_contracts: curated.transporter_contracts,
   pickup_requests: curated.pickup_requests,
+  pickups: curated.pickup_requests,
   delivery_tours: curated.delivery_tours,
   tours: curated.delivery_tours,
   checkpoints: curated.checkpoints,

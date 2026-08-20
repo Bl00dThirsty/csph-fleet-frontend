@@ -100,12 +100,55 @@ export function createApi(adapter: ApiAdapter) {
       return request<any>(`/devices/${id}/assign`, { method: 'POST', body: JSON.stringify({ user_id, vehicle_id }), headers: { 'Content-Type': 'application/json' } })
     },
 
-    // Pickup requests
+    // Pickup requests (Flux 1 Approvisionnements - Spring Boot tour-service)
+    pickups: {
+      list(page = 0, size = 50, filters?: { marketerOrganizationId?: string; sourceSiteId?: string; status?: string }) {
+        const query = new URLSearchParams({ page: String(page), size: String(size) })
+        if (filters?.marketerOrganizationId) query.set('marketerOrganizationId', filters.marketerOrganizationId)
+        if (filters?.sourceSiteId) query.set('sourceSiteId', filters.sourceSiteId)
+        if (filters?.status) query.set('status', filters.status)
+        return adapter.requestList<any>(`/pickups?${query.toString()}`)
+      },
+      get(id: string) {
+        return request<any>(`/pickups/${id}`)
+      },
+      create(body: any) {
+        return request<any>('/pickups', {
+          method: 'POST',
+          body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      update(id: string, body: any) {
+        return request<any>(`/pickups/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      approve(id: string, approvedQuantity: number) {
+        return request<any>(`/pickups/${id}/approve?approvedQuantity=${approvedQuantity}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      reject(id: string) {
+        return request<any>(`/pickups/${id}/reject`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      delete(id: string) {
+        return request<void>(`/pickups/${id}`, { method: 'DELETE' })
+      },
+    },
+
+    // Legacy pickup helpers
     pickupValidate(id: string, approved_quantity: number) {
-      return request<any>(`/pickup-requests/${id}/validate`, { method: 'PATCH', body: JSON.stringify({ approved_quantity }), headers: { 'Content-Type': 'application/json' } })
+      return request<any>(`/pickups/${id}/approve?approvedQuantity=${approved_quantity}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' } })
     },
     pickupComplete(id: string) {
-      return request<any>(`/pickup-requests/${id}/complete`, { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json' } })
+      return request<any>(`/pickups/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'COMPLETED' }), headers: { 'Content-Type': 'application/json' } })
     },
 
     // Delivery tours (Spring Boot tour-service lifecycle)

@@ -30,7 +30,7 @@ export function TourCreateDialog({
   const [tourCode, setTourCode] = useState(`TRP-${Math.floor(1000 + Math.random() * 9000)}`)
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('INTERNAL')
   const [cargoType, setCargoType] = useState<TourneeType>('VRAC')
-  const [quantity, setQuantity] = useState<number>(5000)
+  const [quantity, setQuantity] = useState<number>(5) // 5 TM by default
   const [marketerId, setMarketerId] = useState(defaultMarketer)
   const [transporterId, setTransporterId] = useState(defaultTransporter)
   const [vehicleId, setVehicleId] = useState(curated.vehicles.find((v) => v.type === 'VRAC')?.id ?? '')
@@ -47,12 +47,14 @@ export function TourCreateDialog({
     e.preventDefault()
     setSubmitting(true)
     try {
+      // 1 TM (Tonne Métrique) = 1 000 kg for VRAC, BTL = count for 50kg bottles
+      const quantityInKgOrUnits = cargoType === 'VRAC' ? Number(quantity) * 1000 : Number(quantity)
       const draft: TourDraft = {
         tour_code: tourCode.trim(),
         marketeur_org_id: marketerId,
         execution_mode: executionMode,
         type: cargoType,
-        requested_quantity: Number(quantity),
+        requested_quantity: quantityInKgOrUnits,
         transporter_org_id: executionMode === 'EXTERNAL' ? transporterId : null,
         vehicle_id: executionMode === 'INTERNAL' ? vehicleId : null,
         driver_id: executionMode === 'INTERNAL' ? driverId : null,
@@ -130,18 +132,19 @@ export function TourCreateDialog({
                   }}
                   className='w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm'
                 >
-                  <option value='VRAC'>VRAC (Citerne)</option>
-                  <option value='BOUTEILLES50KG'>Bouteilles 50 kg (Plateau)</option>
+                  <option value='VRAC'>VRAC (Citerne — TM)</option>
+                  <option value='BOUTEILLES50KG'>Bouteilles 50 kg (Plateau — BTL)</option>
                 </select>
               </div>
               <div>
                 <label className='block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1'>
-                  Quantité demandée ({cargoType === 'VRAC' ? 'kg' : 'btl'})
+                  Quantité demandée ({cargoType === 'VRAC' ? 'Tonnes Métriques - TM' : 'Bouteilles 50 kg - BTL'})
                 </label>
                 <input
                   type='number'
                   required
-                  min={1}
+                  min={0.1}
+                  step={cargoType === 'VRAC' ? '0.1' : '1'}
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
                   className='w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm'

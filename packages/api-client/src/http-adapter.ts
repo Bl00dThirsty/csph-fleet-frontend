@@ -100,6 +100,26 @@ export function mapBackendTourToDeliveryTour(raw: any): any {
   }
 }
 
+export function mapBackendPickupToPickupRequest(raw: any): any {
+  if (!raw || typeof raw !== 'object') return raw
+  return {
+    id: raw.id,
+    reference: raw.reference || `PU-${String(raw.id || '').slice(0, 6)}`,
+    marketeur_org_id: raw.marketerOrganizationId || raw.marketeur_org_id,
+    source_site_id: raw.sourceSiteId || raw.source_site_id,
+    destination_site_id: raw.destinationSiteId || raw.destination_site_id,
+    requested_quantity: raw.requestedQuantity ?? raw.requested_quantity ?? 0,
+    approved_quantity: raw.approvedQuantity ?? raw.approved_quantity,
+    status: raw.status || 'DRAFT',
+    status_description: raw.statusDescription || raw.status_description,
+    status_date: raw.statusDate || raw.status_date,
+    created_at: raw.createdAt || raw.created_at,
+    updated_at: raw.changedate || raw.updated_at,
+    created_by: raw.createdBy || raw.created_by,
+    updated_by: raw.changeby || raw.updated_by,
+  }
+}
+
 function mapTourPayloadToBackend(body: any): any {
   if (!body || typeof body !== 'object') return body
   const mapped: any = { ...body }
@@ -113,6 +133,17 @@ function mapTourPayloadToBackend(body: any): any {
   if (body.requested_quantity !== undefined) mapped.requestedQuantity = body.requested_quantity
   if (body.loaded_quantity !== undefined) mapped.loadedQuantity = body.loaded_quantity
   if (body.delivered_quantity !== undefined) mapped.deliveredQuantity = body.delivered_quantity
+  return mapped
+}
+
+function mapPickupPayloadToBackend(body: any): any {
+  if (!body || typeof body !== 'object') return body
+  const mapped: any = { ...body }
+  if (body.marketeur_org_id !== undefined) mapped.marketerOrganizationId = body.marketeur_org_id
+  if (body.source_site_id !== undefined) mapped.sourceSiteId = body.source_site_id
+  if (body.destination_site_id !== undefined) mapped.destinationSiteId = body.destination_site_id
+  if (body.requested_quantity !== undefined) mapped.requestedQuantity = body.requested_quantity
+  if (body.approved_quantity !== undefined) mapped.approvedQuantity = body.approved_quantity
   return mapped
 }
 
@@ -162,12 +193,21 @@ export function createHttpAdapter(baseURL?: string): ApiAdapter {
 
   async function request<T>(path: string, init?: RequestOptions): Promise<T> {
     let body = init?.body
-    if (body && typeof body === 'string' && (path.startsWith('/tours') || path.startsWith('/delivery-tours'))) {
-      try {
-        const parsed = JSON.parse(body)
-        body = JSON.stringify(mapTourPayloadToBackend(parsed))
-      } catch {
-        // preserve body as is
+    if (body && typeof body === 'string') {
+      if (path.startsWith('/tours') || path.startsWith('/delivery-tours')) {
+        try {
+          const parsed = JSON.parse(body)
+          body = JSON.stringify(mapTourPayloadToBackend(parsed))
+        } catch {
+          // preserve body as is
+        }
+      } else if (path.startsWith('/pickups') || path.startsWith('/pickup-requests')) {
+        try {
+          const parsed = JSON.parse(body)
+          body = JSON.stringify(mapPickupPayloadToBackend(parsed))
+        } catch {
+          // preserve body as is
+        }
       }
     }
 
@@ -181,8 +221,11 @@ export function createHttpAdapter(baseURL?: string): ApiAdapter {
     if (res.data && res.data.success === false) throw new Error(res.data.message || 'Request failed')
 
     if (data && typeof data === 'object') {
-      if (data.tourCode || data.marketerOrganizationId) {
+      if (data.tourCode || (data.executionMode && data.marketerOrganizationId)) {
         return mapBackendTourToDeliveryTour(data) as T
+      }
+      if (data.sourceSiteId || data.destinationSiteId) {
+        return mapBackendPickupToPickupRequest(data) as T
       }
       if (data.expectedArrival || data.actualArrival) {
         return mapBackendCheckpointToCheckpoint(data) as T
@@ -218,8 +261,13 @@ export function createHttpAdapter(baseURL?: string): ApiAdapter {
     }
 
     const mappedItems = rawItems.map((item) => {
-      if (item && typeof item === 'object' && (item.tourCode || item.marketerOrganizationId)) {
-        return mapBackendTourToDeliveryTour(item)
+      if (item && typeof item === 'object') {
+        if (item.tourCode || (item.executionMode && item.marketerOrganizationId)) {
+          return mapBackendTourToDeliveryTour(item)
+        }
+        if (item.sourceSiteId || item.destinationSiteId) {
+          return mapBackendPickupToPickupRequest(item)
+        }
       }
       return item
     })

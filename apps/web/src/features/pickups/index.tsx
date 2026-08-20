@@ -1,66 +1,53 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@lpg/ui'
 import { vehicles as vehiclesData } from '@lpg/mock-data'
 import { PageHeader } from '@/components/layout/page-header'
 import { PageShell, SectionCard } from '@/components/layout/page'
+import { usePickupsStore } from '@/store/pickups-store'
 import { PickupsTable } from './components/pickups-table'
 import { PickupsCreateWizard } from './components/pickups-create-wizard'
 import { PickupsValidateDialog } from './components/pickups-validate-dialog'
-import { getPickups, getPickupSummary, orgName, siteName, type Pickup, type PickupStatus } from './data/pickups'
+import { getPickupSummary, type Pickup } from './data/pickups'
 import type { PickupRequest } from '@lpg/types'
 import type { Role } from '@/config/rbac/roles'
 
 export function PickupsPage({ role }: { role: Role }) {
-  const [rows, setRows] = useState<Pickup[]>(() => getPickups())
+  const rows = usePickupsStore((s) => s.getPickupsView())
+  const assignedVehicles = usePickupsStore((s) => s.assignedVehicles)
   const [createOpen, setCreateOpen] = useState(false)
-  const [assignedVehicles, setAssignedVehicles] = useState<Record<string, string[]>>({})
   const [validateOpen, setValidateOpen] = useState<Pickup | null>(null)
   const [detailOpen, setDetailOpen] = useState<Pickup | null>(null)
+
+  useEffect(() => {
+    usePickupsStore.getState().fetchPickups()
+  }, [])
 
   const summary = getPickupSummary(rows)
 
   const handleCreated = (created: PickupRequest, vehicleIds: string[]) => {
-    const reference = `PU-${1001 + rows.length}`
-    const row: Pickup = {
-      id: created.id,
-      reference,
-      source_name: siteName(created.source_site_id),
-      destination_name: siteName(created.destination_site_id),
-      marketeur_name: orgName(created.marketeur_org_id),
-      requested_quantity: created.requested_quantity,
-      approved_quantity: null,
-      pickup_status: 'DRAFT',
-      requested_at: created.created_at ?? new Date().toISOString(),
-      validated_at: null,
-      started_at: null,
-      completed_at: null,
-      proof_url: null,
-    }
-    setRows((prev) => [row, ...prev])
-    setAssignedVehicles((prev) => ({ ...prev, [created.id]: vehicleIds }))
     if (vehicleIds.length > 0) {
-      toast.success(`${reference} créée — ${vehicleIds.length} véhicule(s) assigné(s)`)
+      toast.success(`${created.reference ?? created.id} créée — ${vehicleIds.length} véhicule(s) assigné(s)`)
     }
   }
 
-  const handleValidate = (row: Pickup, qty: number) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === row.id
-          ? { ...r, pickup_status: 'VALIDATED' as PickupStatus, approved_quantity: qty, validated_at: new Date().toISOString() }
-          : r
-      )
-    )
-    toast.success(`${row.reference} validée pour ${qty.toLocaleString('fr-FR')} TM`)
+  const handleValidate = async (row: Pickup, qty: number) => {
+    try {
+      await usePickupsStore.getState().approvePickupAsync(row.id, qty)
+      toast.success(`${row.reference} validée pour ${qty.toLocaleString('fr-FR')} TM`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur de validation')
+    }
   }
 
-  const handleCancel = (row: Pickup) => {
-    setRows((prev) =>
-      prev.map((r) => (r.id === row.id ? { ...r, pickup_status: 'CANCELLED' as PickupStatus } : r))
-    )
-    toast.warning(`${row.reference} annulée`)
+  const handleCancel = async (row: Pickup) => {
+    try {
+      await usePickupsStore.getState().cancelPickupAsync(row.id)
+      toast.warning(`${row.reference} annulée`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de l\'annulation')
+    }
   }
 
   const detailVehicleIds = detailOpen ? assignedVehicles[detailOpen.id] ?? [] : []

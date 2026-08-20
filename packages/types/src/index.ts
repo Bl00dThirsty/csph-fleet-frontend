@@ -384,12 +384,16 @@ export interface TransporterContract extends BaseEntity {
 
 export interface PickupRequest extends BaseEntity {
   id: string
+  reference?: string
   marketeur_org_id: string
   source_site_id: string
   destination_site_id: string
   requested_quantity: number
   approved_quantity?: number | null
   status: PickupStatus
+  status_description?: string | null
+  status_date?: string | null
+  assigned_vehicle_ids?: string[]
 }
 
 export interface DeliveryTour extends BaseEntity {

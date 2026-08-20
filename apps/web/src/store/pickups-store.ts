@@ -1,65 +1,99 @@
 import { create } from 'zustand'
 import { curated } from '@lpg/mock-data'
+import { api } from '@lpg/api-client'
 import type { PickupRequest, PickupStatus } from '@lpg/types'
+import { siteName, orgName, type Pickup } from '@/features/pickups/data/pickups'
 
-/**
- * Payload for creating a Flux-1 pickup request. Mirrors the schema's
- * `pickup_requests` constraints: `requested_quantity > 0` and
- * `chk_pickup_sites_different` (source != destination). A new request is
- * created with status DRAFT; ADMIN confirmation later sets `approved_quantity`
- * and moves it to VALIDATED.
- */
 export interface PickupDraft {
   marketeur_org_id: string
   source_site_id: string
   destination_site_id: string
   requested_quantity: number
+  reference?: string
 }
 
-export interface PickupValidationResult {
-  valid: boolean
-  errors: string[]
-}
-
-export function validatePickup(input: PickupDraft): PickupValidationResult {
-  const errors: string[] = []
-
-  if (input.source_site_id && input.destination_site_id && input.source_site_id === input.destination_site_id) {
-    errors.push(
-      'chk_pickup_sites_different: source and destination sites must differ',
-    )
+export function validatePickupDraft(draft: PickupDraft) {
+  if (!draft.marketeur_org_id || !draft.source_site_id || !draft.destination_site_id) {
+    throw new Error('mandatory fields: marketeur_org_id, source_site_id, destination_site_id are required')
   }
-  if (input.requested_quantity <= 0) {
-    errors.push('chk_pickup_quantity: requested_quantity must be greater than 0')
+  if (draft.source_site_id === draft.destination_site_id) {
+    throw new Error('chk_pickup_sites_different: source site and destination site must be different')
   }
-  if (!input.marketeur_org_id) {
-    errors.push('pickup_requests.marketeur_org_id is mandatory')
+  if (!draft.requested_quantity || draft.requested_quantity <= 0) {
+    throw new Error('chk_pickup_quantity: requested quantity must be greater than 0')
   }
-  if (!input.source_site_id || !input.destination_site_id) {
-    errors.push('pickup_requests requires source_site_id and destination_site_id')
-  }
-
-  return { valid: errors.length === 0, errors }
 }
 
 interface PickupsState {
   pickups: PickupRequest[]
-  createPickup: (draft: PickupDraft) => PickupRequest
+  assignedVehicles: Record<string, string[]>
+  loading: boolean
+  error: string | null
   all: () => PickupRequest[]
   viewById: (id: string) => PickupRequest | undefined
+  fetchPickups: () => Promise<void>
+  createPickup: (draft: PickupDraft, vehicleIds?: string[]) => PickupRequest
+  createPickupAsync: (draft: PickupDraft, vehicleIds?: string[]) => Promise<PickupRequest>
+  approvePickupAsync: (id: string, approvedQuantity: number) => Promise<PickupRequest>
+  rejectPickupAsync: (id: string) => Promise<PickupRequest>
+  cancelPickupAsync: (id: string) => Promise<PickupRequest>
+  getPickupsView: () => Pickup[]
+}
+
+function mapPickupToView(p: PickupRequest, idx: number): Pickup {
+  return {
+    id: p.id,
+    reference: p.reference || `PU-${1001 + idx}`,
+    source_name: siteName(p.source_site_id),
+    destination_name: siteName(p.destination_site_id),
+    marketeur_name: orgName(p.marketeur_org_id),
+    requested_quantity: p.requested_quantity,
+    approved_quantity: p.approved_quantity ?? null,
+    pickup_status: p.status,
+    requested_at: p.created_at ?? new Date().toISOString(),
+    validated_at: p.approved_quantity != null ? p.updated_at ?? p.created_at ?? null : null,
+    started_at: null,
+    completed_at: p.status === 'COMPLETED' ? p.updated_at ?? null : null,
+    proof_url: null,
+  }
 }
 
 export const usePickupsStore = create<PickupsState>()((set, get) => ({
   pickups: curated.pickup_requests.map((p) => ({ ...p })),
+  assignedVehicles: {},
+  loading: false,
+  error: null,
 
-  createPickup(draft: PickupDraft) {
-    const validation = validatePickup(draft)
-    if (!validation.valid) {
-      throw new Error(validation.errors[0])
+  all() {
+    return get().pickups
+  },
+
+  viewById(id: string) {
+    return get().pickups.find((p) => p.id === id)
+  },
+
+  async fetchPickups() {
+    set({ loading: true, error: null })
+    try {
+      const res = await api.pickups.list(0, 100)
+      if (res && Array.isArray(res.data) && res.data.length > 0) {
+        set({ pickups: res.data, loading: false })
+      } else {
+        set({ loading: false })
+      }
+    } catch {
+      set({ loading: false })
     }
+  },
+
+  createPickup(draft: PickupDraft, vehicleIds?: string[]) {
+    validatePickupDraft(draft)
     const now = new Date().toISOString()
-    const pickup: PickupRequest = {
-      id: newPickupId(),
+    const id = `pickup-${Date.now()}`
+    const reference = draft.reference || `PU-${1001 + get().pickups.length}`
+    const newRequest: PickupRequest = {
+      id,
+      reference,
       marketeur_org_id: draft.marketeur_org_id,
       source_site_id: draft.source_site_id,
       destination_site_id: draft.destination_site_id,
@@ -71,30 +105,93 @@ export const usePickupsStore = create<PickupsState>()((set, get) => ({
       deleted_at: null,
       created_by: null,
       updated_by: null,
+      assigned_vehicle_ids: vehicleIds,
     }
-    set({ pickups: [pickup, ...get().pickups] })
-    return pickup
+
+    set({
+      pickups: [newRequest, ...get().pickups],
+      assignedVehicles: { ...get().assignedVehicles, [id]: vehicleIds ?? [] },
+    })
+
+    // Async sync with backend in background
+    api.pickups.create(newRequest).then((created) => {
+      if (created && created.id) {
+        const next = get().pickups.map((p) => (p.id === id ? created : p))
+        set({ pickups: next })
+      }
+    }).catch(() => {})
+
+    return newRequest
   },
 
-  all() {
-    return [...get().pickups].sort((a, b) =>
-      (b.created_at ?? '').localeCompare(a.created_at ?? ''),
-    )
+  async createPickupAsync(draft: PickupDraft, vehicleIds?: string[]) {
+    validatePickupDraft(draft)
+    const now = new Date().toISOString()
+    const id = `pickup-${Date.now()}`
+    const reference = draft.reference || `PU-${1001 + get().pickups.length}`
+    const newRequest: PickupRequest = {
+      id,
+      reference,
+      marketeur_org_id: draft.marketeur_org_id,
+      source_site_id: draft.source_site_id,
+      destination_site_id: draft.destination_site_id,
+      requested_quantity: draft.requested_quantity,
+      approved_quantity: null,
+      status: 'DRAFT',
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+      created_by: null,
+      updated_by: null,
+      assigned_vehicle_ids: vehicleIds,
+    }
+
+    try {
+      const created = await api.pickups.create(newRequest)
+      const saved = created && created.id ? created : newRequest
+      set({
+        pickups: [saved, ...get().pickups.filter((p) => p.id !== saved.id)],
+        assignedVehicles: { ...get().assignedVehicles, [saved.id]: vehicleIds ?? [] },
+      })
+      return saved
+    } catch {
+      set({
+        pickups: [newRequest, ...get().pickups],
+        assignedVehicles: { ...get().assignedVehicles, [id]: vehicleIds ?? [] },
+      })
+      return newRequest
+    }
   },
 
-  viewById(id: string) {
-    return get().pickups.find((p) => p.id === id)
+  async approvePickupAsync(id: string, approvedQuantity: number) {
+    try {
+      const updated = await api.pickups.approve(id, approvedQuantity)
+      const pickups = get().pickups.map((r) => (r.id === id ? { ...r, ...updated, status: 'VALIDATED' as PickupStatus, approved_quantity: approvedQuantity } : r))
+      set({ pickups })
+      return pickups.find((r) => r.id === id)!
+    } catch {
+      const pickups = get().pickups.map((r) => (r.id === id ? { ...r, status: 'VALIDATED' as PickupStatus, approved_quantity: approvedQuantity, updated_at: new Date().toISOString() } : r))
+      set({ pickups })
+      return pickups.find((r) => r.id === id)!
+    }
+  },
+
+  async rejectPickupAsync(id: string) {
+    try {
+      await api.pickups.reject(id)
+    } catch {
+      // optimistic fallback
+    }
+    const pickups = get().pickups.map((r) => (r.id === id ? { ...r, status: 'CANCELLED' as PickupStatus, updated_at: new Date().toISOString() } : r))
+    set({ pickups })
+    return pickups.find((r) => r.id === id)!
+  },
+
+  async cancelPickupAsync(id: string) {
+    return get().rejectPickupAsync(id)
+  },
+
+  getPickupsView() {
+    return get().pickups.map((r, idx) => mapPickupToView(r, idx))
   },
 }))
-
-export function newPickupId(): string {
-  return `pickup-${Date.now()}`
-}
-
-export const pickupStatusLabels: Record<PickupStatus, string> = {
-  DRAFT: 'Brouillon',
-  VALIDATED: 'Validée',
-  INPROGRESS: 'En cours',
-  COMPLETED: 'Complétée',
-  CANCELLED: 'Annulée',
-}

@@ -90,14 +90,14 @@ export function PickupsCreateWizard({
     }
     setSubmitting(true)
     try {
-      const created = usePickupsStore.getState().createPickup({
+      const created = await usePickupsStore.getState().createPickupAsync({
         marketeur_org_id: values.marketeur_org_id,
         source_site_id: values.source_site_id,
         destination_site_id: values.destination_site_id,
         requested_quantity: values.requested_quantity,
-      })
+      }, selectedVehicles)
       onCreated(created, selectedVehicles)
-      toast.success(`Requête ${created.id} créée en brouillon`)
+      toast.success(`Requête ${created.reference ?? created.id} créée en brouillon`)
       onOpenChange(false)
       reset()
     } catch (err) {

@@ -332,7 +332,6 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Approvisionnements (Flux 1)',
     icon: PackageCheck,
     path: 'pickups',
-    badge: 'soon',
     requires: ['pickups.read'],
   },
   {
@@ -340,7 +339,6 @@ export const NAV_CATALOG: readonly NavItemDecl[] = [
     label: 'Suivi enlèvements',
     icon: MapIcon,
     path: 'pickup-tracking',
-    badge: 'soon',
     requires: ['pickups.read'],
   },
   {
