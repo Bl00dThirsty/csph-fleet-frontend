@@ -608,7 +608,64 @@ function getHighestSeverity(events: readonly RouteEvent[]): RouteEventSeverity {
   return 'low'
 }
 
-function buildView(tour: DeliveryTour, index: number, checkpointsSource?: typeof checkpoints): TourActivity {
+export function normalizeTour(raw: any): DeliveryTour {
+  if (!raw) {
+    return {
+      id: `tour-fallback-${Date.now()}`,
+      tour_code: `TRP-${Math.floor(1000 + Math.random() * 9000)}`,
+      marketeur_org_id: 'org-0002-sctm-0000-000000000001',
+      execution_mode: 'INTERNAL',
+      transporter_org_id: null,
+      vehicle_id: null,
+      driver_id: null,
+      livreur_user_id: null,
+      assigned_by_transporter_user_id: null,
+      transporter_assigned_at: null,
+      sent_to_transporter_at: null,
+      type: 'VRAC',
+      status: 'INPROGRESS',
+      requested_quantity: 10,
+      loaded_quantity: null,
+      delivered_quantity: null,
+      started_at: null,
+      closed_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      created_by: 'system',
+      updated_by: 'system',
+    }
+  }
+
+  return {
+    id: raw.id ?? `tour-${Math.random()}`,
+    tour_code: raw.tour_code ?? raw.tourCode ?? null,
+    marketeur_org_id: raw.marketeur_org_id ?? raw.marketerOrganizationId ?? 'org-0002-sctm-0000-000000000001',
+    execution_mode: raw.execution_mode ?? raw.executionMode ?? 'INTERNAL',
+    transporter_org_id: raw.transporter_org_id ?? raw.transporterOrganizationId ?? null,
+    vehicle_id: raw.vehicle_id ?? raw.vehicleId ?? null,
+    driver_id: raw.driver_id ?? raw.driverId ?? null,
+    livreur_user_id: raw.livreur_user_id ?? raw.livreurUserId ?? null,
+    assigned_by_transporter_user_id: raw.assigned_by_transporter_user_id ?? raw.assignedByTransporterUserId ?? null,
+    transporter_assigned_at: raw.transporter_assigned_at ?? raw.transporterAssignedAt ?? null,
+    sent_to_transporter_at: raw.sent_to_transporter_at ?? raw.sentToTransporterAt ?? null,
+    type: raw.type ?? raw.tourneeType ?? 'VRAC',
+    status: raw.status ?? raw.tourneeStatus ?? 'INPROGRESS',
+    requested_quantity: Number(raw.requested_quantity ?? raw.requestedQuantity ?? 10),
+    loaded_quantity: raw.loaded_quantity != null ? Number(raw.loaded_quantity) : (raw.loadedQuantity != null ? Number(raw.loadedQuantity) : null),
+    delivered_quantity: raw.delivered_quantity != null ? Number(raw.delivered_quantity) : (raw.deliveredQuantity != null ? Number(raw.deliveredQuantity) : null),
+    started_at: raw.started_at ?? raw.startedAt ?? null,
+    closed_at: raw.closed_at ?? raw.closedAt ?? null,
+    created_at: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+    updated_at: raw.updated_at ?? raw.updatedAt ?? new Date().toISOString(),
+    deleted_at: raw.deleted_at ?? raw.deletedAt ?? null,
+    created_by: raw.created_by ?? raw.createdBy ?? 'system',
+    updated_by: raw.updated_by ?? raw.updatedBy ?? 'system',
+  }
+}
+
+function buildView(tourRaw: DeliveryTour, index: number, checkpointsSource?: typeof checkpoints): TourActivity {
+  const tour = normalizeTour(tourRaw)
   const tourCheckpoints = (checkpointsSource ?? checkpoints).filter(
     (checkpoint) => checkpoint.tournee_id === tour.id,
   )
@@ -696,7 +753,7 @@ function buildView(tour: DeliveryTour, index: number, checkpointsSource?: typeof
     tourneeStatus: tour.status,
     tourneeType: tour.type,
     execution_mode: tour.execution_mode,
-    marketeur_name: orgName(tour.marketeur_org_id) ?? '—',
+    marketeur_name: orgName(tour.marketeur_org_id) ?? 'SCTM',
     transporter_name: orgName(tour.transporter_org_id),
     vehicle_plate: vehiclePlate(tour.vehicle_id),
     driver_name: personName(tour.driver_id),

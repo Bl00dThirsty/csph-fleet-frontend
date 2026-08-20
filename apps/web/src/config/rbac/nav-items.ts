@@ -728,7 +728,7 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
       { title: 'Gestion', items: ['overview', 'users', 'marketers', 'transporters', 'dashboard-admin'] },
       {
         title: 'Validation & Contrôle',
-        items: ['site-verifications', 'pickups', 'declarations', 'reconciliations'],
+        items: ['site-verifications', 'pickups', 'tours', 'tour-tracking', 'declarations', 'reconciliations'],
       },
       {
         title: 'Anomalies & Risques',
