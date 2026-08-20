@@ -82,8 +82,10 @@ export function UserDetailsSheet({
                     </CardHeader>
                     <CardContent className='space-y-3'>
                       <DetailLine label='ID' value={user.id} />
-                      <DetailLine label='Nom' value={user.fullName} />
+                      <DetailLine label='Nom complet' value={user.fullName} />
                       <DetailLine label='E-mail' value={user.email} />
+                      <DetailLine label='Téléphone' value={user.phone || 'Non renseigné'} />
+                      <DetailLine label='Fonction / Titre' value={user.job_title || 'Collaborateur'} />
                       <DetailLine label='Organisation' value={user.orgName} />
                       <DetailLine label='Rôle' value={user.roleLabel} />
                     </CardContent>
@@ -99,7 +101,7 @@ export function UserDetailsSheet({
                     <CardHeader className='pb-2'>
                       <CardTitle className='flex items-center gap-2 text-sm'>
                         <ShieldCheck className='size-4 text-primary' />
-                        Détails
+                        Sécurité & Traçabilité
                       </CardTitle>
                     </CardHeader>
                     <CardContent className='space-y-3'>
@@ -114,6 +116,40 @@ export function UserDetailsSheet({
                       <DetailLine label='Dernière connexion' value={user.lastLogin} />
                       <DetailLine label='Créé le' value={user.created_at} />
                       <DetailLine label='Mis à jour' value={user.updated_at} />
+                    </CardContent>
+                  </Card>
+                ),
+              },
+              {
+                value: 'permissions',
+                label: 'Permissions',
+                icon: ShieldCheck,
+                content: (
+                  <Card>
+                    <CardHeader className='pb-2'>
+                      <CardTitle className='flex items-center gap-2 text-sm'>
+                        <ShieldCheck className='size-4 text-primary' />
+                        Permissions & Droits accordés
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className='space-y-2'>
+                      {user.custom_permissions && user.custom_permissions.length > 0 && (
+                        <div className='mb-3 space-y-1 rounded-lg border border-sky-500/20 bg-sky-500/5 p-2.5'>
+                          <p className='text-xs font-semibold text-sky-600 dark:text-sky-400'>
+                            Droits spécifiques additionnels ({user.custom_permissions.length}) :
+                          </p>
+                          <div className='flex flex-wrap gap-1'>
+                            {user.custom_permissions.map((p) => (
+                              <Badge key={p} variant='secondary' className='text-[10px] font-mono'>
+                                ★ {p}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <p className='text-xs text-muted-foreground'>
+                        Rôle système actif : <strong className='text-foreground'>{user.roleLabel}</strong> (droits standards de la fonction).
+                      </p>
                     </CardContent>
                   </Card>
                 ),

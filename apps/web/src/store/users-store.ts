@@ -8,6 +8,10 @@ export type UserPatch = Partial<Pick<CuratedUser,
   | 'email'
   | 'system_role'
   | 'org_id'
+  | 'phone'
+  | 'job_title'
+  | 'site_id'
+  | 'custom_permissions'
   | 'is_active'
 >>
 

@@ -83,12 +83,14 @@ import { Route as AuthenticatedTransportersTransporterIdRouteImport } from './ro
 import { Route as AuthenticatedTrucksIndexRouteImport } from './routes/_authenticated/trucks/index'
 import { Route as AuthenticatedTrucksTruckIdRouteImport } from './routes/_authenticated/trucks/$truckId'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
+import { Route as AuthenticatedUsersNewRouteImport } from './routes/_authenticated/users/new'
 import { Route as AuthenticatedVehiclesIndexRouteImport } from './routes/_authenticated/vehicles/index'
 import { Route as AuthenticatedVisitsIndexRouteImport } from './routes/_authenticated/visits/index'
 import { Route as AuthenticatedZonesIndexRouteImport } from './routes/_authenticated/zones/index'
 import { Route as AuthenticatedDashboardFleetsFleetNameRouteImport } from './routes/_authenticated/dashboard/fleets/$fleetName'
 import { Route as AuthenticatedDashboardSitesSiteIdRouteImport } from './routes/_authenticated/dashboard/sites/$siteId'
 import { Route as AuthenticatedSuperAdminToursIndexRouteImport } from './routes/_authenticated/super-admin/tours/index'
+import { Route as AuthenticatedUsersUserIdEditRouteImport } from './routes/_authenticated/users/$userId.edit'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -521,6 +523,11 @@ const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
   path: '/users/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedUsersNewRoute = AuthenticatedUsersNewRouteImport.update({
+  id: '/users/new',
+  path: '/users/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedVehiclesIndexRoute =
   AuthenticatedVehiclesIndexRouteImport.update({
     id: '/vehicles/',
@@ -556,6 +563,12 @@ const AuthenticatedSuperAdminToursIndexRoute =
     path: '/super-admin/tours/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedUsersUserIdEditRoute =
+  AuthenticatedUsersUserIdEditRouteImport.update({
+    id: '/users/$userId/edit',
+    path: '/users/$userId/edit',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -572,6 +585,7 @@ export interface FileRoutesByFullPath {
   '/tour-tracking/$tourId': typeof AuthenticatedTourTrackingTourIdRoute
   '/transporters/$transporterId': typeof AuthenticatedTransportersTransporterIdRoute
   '/trucks/$truckId': typeof AuthenticatedTrucksTruckIdRoute
+  '/users/new': typeof AuthenticatedUsersNewRoute
   '/alert-rules/': typeof AuthenticatedAlertRulesIndexRoute
   '/alerts/': typeof AuthenticatedAlertsIndexRoute
   '/anomalies/': typeof AuthenticatedAnomaliesIndexRoute
@@ -636,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/zones/': typeof AuthenticatedZonesIndexRoute
   '/dashboard/fleets/$fleetName': typeof AuthenticatedDashboardFleetsFleetNameRoute
   '/dashboard/sites/$siteId': typeof AuthenticatedDashboardSitesSiteIdRoute
+  '/users/$userId/edit': typeof AuthenticatedUsersUserIdEditRoute
   '/super-admin/tours/': typeof AuthenticatedSuperAdminToursIndexRoute
 }
 export interface FileRoutesByTo {
@@ -651,6 +666,7 @@ export interface FileRoutesByTo {
   '/tour-tracking/$tourId': typeof AuthenticatedTourTrackingTourIdRoute
   '/transporters/$transporterId': typeof AuthenticatedTransportersTransporterIdRoute
   '/trucks/$truckId': typeof AuthenticatedTrucksTruckIdRoute
+  '/users/new': typeof AuthenticatedUsersNewRoute
   '/alert-rules': typeof AuthenticatedAlertRulesIndexRoute
   '/alerts': typeof AuthenticatedAlertsIndexRoute
   '/anomalies': typeof AuthenticatedAnomaliesIndexRoute
@@ -715,6 +731,7 @@ export interface FileRoutesByTo {
   '/zones': typeof AuthenticatedZonesIndexRoute
   '/dashboard/fleets/$fleetName': typeof AuthenticatedDashboardFleetsFleetNameRoute
   '/dashboard/sites/$siteId': typeof AuthenticatedDashboardSitesSiteIdRoute
+  '/users/$userId/edit': typeof AuthenticatedUsersUserIdEditRoute
   '/super-admin/tours': typeof AuthenticatedSuperAdminToursIndexRoute
 }
 export interface FileRoutesById {
@@ -734,6 +751,7 @@ export interface FileRoutesById {
   '/_authenticated/tour-tracking/$tourId': typeof AuthenticatedTourTrackingTourIdRoute
   '/_authenticated/transporters/$transporterId': typeof AuthenticatedTransportersTransporterIdRoute
   '/_authenticated/trucks/$truckId': typeof AuthenticatedTrucksTruckIdRoute
+  '/_authenticated/users/new': typeof AuthenticatedUsersNewRoute
   '/_authenticated/alert-rules/': typeof AuthenticatedAlertRulesIndexRoute
   '/_authenticated/alerts/': typeof AuthenticatedAlertsIndexRoute
   '/_authenticated/anomalies/': typeof AuthenticatedAnomaliesIndexRoute
@@ -798,6 +816,7 @@ export interface FileRoutesById {
   '/_authenticated/zones/': typeof AuthenticatedZonesIndexRoute
   '/_authenticated/dashboard/fleets/$fleetName': typeof AuthenticatedDashboardFleetsFleetNameRoute
   '/_authenticated/dashboard/sites/$siteId': typeof AuthenticatedDashboardSitesSiteIdRoute
+  '/_authenticated/users/$userId/edit': typeof AuthenticatedUsersUserIdEditRoute
   '/_authenticated/super-admin/tours/': typeof AuthenticatedSuperAdminToursIndexRoute
 }
 export interface FileRouteTypes {
@@ -817,6 +836,7 @@ export interface FileRouteTypes {
     | '/tour-tracking/$tourId'
     | '/transporters/$transporterId'
     | '/trucks/$truckId'
+    | '/users/new'
     | '/alert-rules/'
     | '/alerts/'
     | '/anomalies/'
@@ -881,6 +901,7 @@ export interface FileRouteTypes {
     | '/zones/'
     | '/dashboard/fleets/$fleetName'
     | '/dashboard/sites/$siteId'
+    | '/users/$userId/edit'
     | '/super-admin/tours/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -896,6 +917,7 @@ export interface FileRouteTypes {
     | '/tour-tracking/$tourId'
     | '/transporters/$transporterId'
     | '/trucks/$truckId'
+    | '/users/new'
     | '/alert-rules'
     | '/alerts'
     | '/anomalies'
@@ -960,6 +982,7 @@ export interface FileRouteTypes {
     | '/zones'
     | '/dashboard/fleets/$fleetName'
     | '/dashboard/sites/$siteId'
+    | '/users/$userId/edit'
     | '/super-admin/tours'
   id:
     | '__root__'
@@ -978,6 +1001,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tour-tracking/$tourId'
     | '/_authenticated/transporters/$transporterId'
     | '/_authenticated/trucks/$truckId'
+    | '/_authenticated/users/new'
     | '/_authenticated/alert-rules/'
     | '/_authenticated/alerts/'
     | '/_authenticated/anomalies/'
@@ -1042,6 +1066,7 @@ export interface FileRouteTypes {
     | '/_authenticated/zones/'
     | '/_authenticated/dashboard/fleets/$fleetName'
     | '/_authenticated/dashboard/sites/$siteId'
+    | '/_authenticated/users/$userId/edit'
     | '/_authenticated/super-admin/tours/'
   fileRoutesById: FileRoutesById
 }
@@ -1571,6 +1596,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/users/new': {
+      id: '/_authenticated/users/new'
+      path: '/users/new'
+      fullPath: '/users/new'
+      preLoaderRoute: typeof AuthenticatedUsersNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/vehicles/': {
       id: '/_authenticated/vehicles/'
       path: '/vehicles'
@@ -1611,6 +1643,13 @@ declare module '@tanstack/react-router' {
       path: '/super-admin/tours'
       fullPath: '/super-admin/tours/'
       preLoaderRoute: typeof AuthenticatedSuperAdminToursIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/users/$userId/edit': {
+      id: '/_authenticated/users/$userId/edit'
+      path: '/users/$userId/edit'
+      fullPath: '/users/$userId/edit'
+      preLoaderRoute: typeof AuthenticatedUsersUserIdEditRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
   }
@@ -1666,6 +1705,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTourTrackingTourIdRoute: typeof AuthenticatedTourTrackingTourIdRoute
   AuthenticatedTransportersTransporterIdRoute: typeof AuthenticatedTransportersTransporterIdRoute
   AuthenticatedTrucksTruckIdRoute: typeof AuthenticatedTrucksTruckIdRoute
+  AuthenticatedUsersNewRoute: typeof AuthenticatedUsersNewRoute
   AuthenticatedAlertRulesIndexRoute: typeof AuthenticatedAlertRulesIndexRoute
   AuthenticatedAlertsIndexRoute: typeof AuthenticatedAlertsIndexRoute
   AuthenticatedAuditLogsIndexRoute: typeof AuthenticatedAuditLogsIndexRoute
@@ -1726,6 +1766,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedVehiclesIndexRoute: typeof AuthenticatedVehiclesIndexRoute
   AuthenticatedVisitsIndexRoute: typeof AuthenticatedVisitsIndexRoute
   AuthenticatedZonesIndexRoute: typeof AuthenticatedZonesIndexRoute
+  AuthenticatedUsersUserIdEditRoute: typeof AuthenticatedUsersUserIdEditRoute
   AuthenticatedSuperAdminToursIndexRoute: typeof AuthenticatedSuperAdminToursIndexRoute
 }
 
@@ -1742,6 +1783,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTransportersTransporterIdRoute:
     AuthenticatedTransportersTransporterIdRoute,
   AuthenticatedTrucksTruckIdRoute: AuthenticatedTrucksTruckIdRoute,
+  AuthenticatedUsersNewRoute: AuthenticatedUsersNewRoute,
   AuthenticatedAlertRulesIndexRoute: AuthenticatedAlertRulesIndexRoute,
   AuthenticatedAlertsIndexRoute: AuthenticatedAlertsIndexRoute,
   AuthenticatedAuditLogsIndexRoute: AuthenticatedAuditLogsIndexRoute,
@@ -1811,6 +1853,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedVehiclesIndexRoute: AuthenticatedVehiclesIndexRoute,
   AuthenticatedVisitsIndexRoute: AuthenticatedVisitsIndexRoute,
   AuthenticatedZonesIndexRoute: AuthenticatedZonesIndexRoute,
+  AuthenticatedUsersUserIdEditRoute: AuthenticatedUsersUserIdEditRoute,
   AuthenticatedSuperAdminToursIndexRoute:
     AuthenticatedSuperAdminToursIndexRoute,
 }

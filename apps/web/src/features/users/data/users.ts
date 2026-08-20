@@ -13,7 +13,13 @@ export type UserStatus = 'ACTIVE' | 'INACTIVE'
 export interface UserView {
   id: string
   email: string
+  first_name: string
+  last_name: string
   fullName: string
+  phone?: string
+  job_title?: string
+  site_id?: string
+  custom_permissions?: string[]
   role: Role
   roleLabel: string
   orgId: string
@@ -34,7 +40,13 @@ export function userToView(user: CuratedUser): UserView {
   return {
     id: user.id,
     email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
     fullName: `${user.first_name} ${user.last_name}`.trim(),
+    phone: user.phone,
+    job_title: user.job_title,
+    site_id: user.site_id,
+    custom_permissions: user.custom_permissions,
     role,
     roleLabel: ROLE_LABELS[role] ?? role,
     orgId: user.org_id,

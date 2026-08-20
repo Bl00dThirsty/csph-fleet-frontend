@@ -211,6 +211,10 @@ export interface AppUser extends BaseEntity {
   last_name: string
   system_role: Role
   org_id: string
+  phone?: string
+  job_title?: string
+  site_id?: string
+  custom_permissions?: string[]
   is_active: boolean
   mfa_status?: MfaStatus
   last_login_at?: string | null

@@ -773,7 +773,7 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
   },
   MARKETEUR: {
     groups: [
-      { title: 'Pilotage & Flotte', items: ['dashboard-marketeur', 'vehicles', 'drivers', 'devices'] },
+      { title: 'Pilotage & Flotte', items: ['dashboard-marketeur', 'vehicles', 'drivers', 'devices', 'users'] },
       {
         title: 'Flux 1 — Approvisionnement',
         items: ['pickups', 'pickup-tracking'],
@@ -794,7 +794,7 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
         title: 'Opérations',
         items: ['dashboard-transporteur', 'tours', 'tour-tracking'],
       },
-      { title: 'Ma flotte', items: ['vehicles', 'drivers', 'livreurs'] },
+      { title: 'Ma flotte & Équipes', items: ['vehicles', 'drivers', 'livreurs', 'users'] },
       { title: 'Contrats & Clients', items: ['contracts', 'performance'] },
     ],
   },

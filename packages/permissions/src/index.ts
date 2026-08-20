@@ -349,6 +349,7 @@ const AGENT_GRANTS = [
 ] as const satisfies readonly PermissionCode[]
 
 const MARKETEUR_GRANTS = [
+  'users.read', 'users.write', 'users.create',
   'trucks.read', 'trucks.write', 'trucks.create', 'trucks.delete', 'trucks.manage',
   'vehicle-types.read', 'vehicle-types.write',
   'drivers.read', 'drivers.write', 'drivers.manage',
@@ -367,6 +368,7 @@ const MARKETEUR_GRANTS = [
 ] as const satisfies readonly PermissionCode[]
 
 const TRANSPORTEUR_GRANTS = [
+  'users.read', 'users.write', 'users.create',
   'trucks.read', 'trucks.write', 'trucks.create', 'trucks.manage',
   'vehicle-types.read',
   'drivers.read', 'drivers.write', 'drivers.manage',
@@ -549,5 +551,109 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
 export function roleLabel(role: Role): string {
   return ROLE_LABELS[role]
 }
+
+export interface UserGroupProfile {
+  id: string
+  name: string
+  description: string
+  baseRole: Role
+  targetOrgType: 'MARKETEUR' | 'TRANSPORTEUR' | 'CSPH' | 'ALL'
+  defaultPermissions?: PermissionCode[]
+}
+
+export const PREDEFINED_PROFILES: readonly UserGroupProfile[] = [
+  // Profils Marketeur
+  {
+    id: 'mkt-lead',
+    name: 'Gestionnaire Principal Marketeur',
+    description: 'Administration globale du compte marketeur, supervision des flux, approvisionnements et livraisons.',
+    baseRole: 'MARKETEUR',
+    targetOrgType: 'MARKETEUR',
+  },
+  {
+    id: 'mkt-logistics',
+    name: 'Responsable Logistique & Approvisionnements',
+    description: 'Gestion des demandes d\'enlèvement (Flux 1), suivi des quotas et entrées en stock centres emplisseurs.',
+    baseRole: 'MARKETEUR',
+    targetOrgType: 'MARKETEUR',
+    defaultPermissions: ['pickups.create', 'pickups.write', 'pickups.read', 'quotas.read'],
+  },
+  {
+    id: 'mkt-dispatcher',
+    name: 'Dispatcher Flotte & Tournées',
+    description: 'Création et planification des tournées de distribution (Flux 2), assignation des camions et chauffeurs.',
+    baseRole: 'MARKETEUR',
+    targetOrgType: 'MARKETEUR',
+    defaultPermissions: ['tours.create', 'tours.write', 'tours.assign', 'trucks.read', 'drivers.read'],
+  },
+  {
+    id: 'mkt-compliance',
+    name: 'Responsable Déclarations & Subventions',
+    description: 'Soumission des déclarations de volumes livrés, suivi de la réconciliation et reporting financier.',
+    baseRole: 'MARKETEUR',
+    targetOrgType: 'MARKETEUR',
+    defaultPermissions: ['declarations.write', 'declarations.read', 'subsidies.read', 'reports.read'],
+  },
+  {
+    id: 'mkt-livreur',
+    name: 'Livreur / Convoyeur Terrain (PDA)',
+    description: 'Exécution des livraisons sur application mobile PDA, scans RFID des bouteilles et checkpoints.',
+    baseRole: 'LIVREUR',
+    targetOrgType: 'MARKETEUR',
+  },
+
+  // Profils Transporteur
+  {
+    id: 'trp-manager',
+    name: 'Responsable Flotte Transporteur',
+    description: 'Accusé de réception des tournées sous-traitées, gestion des camions et assignation des chauffeurs.',
+    baseRole: 'TRANSPORTEUR',
+    targetOrgType: 'TRANSPORTEUR',
+  },
+  {
+    id: 'trp-driver',
+    name: 'Chauffeur / Livreur Sous-traitant (PDA)',
+    description: 'Conduite des camions de livraison et validation des étapes de tournée sur application PDA.',
+    baseRole: 'LIVREUR',
+    targetOrgType: 'TRANSPORTEUR',
+  },
+
+  // Profils Régulateur CSPH
+  {
+    id: 'csph-superadmin',
+    name: 'Super Administrateur CSPH',
+    description: 'Direction Générale & Supervision intégrale du système national de distribution GPL.',
+    baseRole: 'SUPERADMIN',
+    targetOrgType: 'CSPH',
+  },
+  {
+    id: 'csph-admin',
+    name: 'Administrateur Opérationnel CSPH',
+    description: 'Validation des quotas d\'enlèvement, gestion des organisations tiers, audits et conformité.',
+    baseRole: 'ADMIN',
+    targetOrgType: 'CSPH',
+  },
+  {
+    id: 'csph-supervisor',
+    name: 'Superviseur Technique & Risques',
+    description: 'Surveillance des alertes télémétriques, détection de siphonnage et analyse des risques.',
+    baseRole: 'SUPERVISOR',
+    targetOrgType: 'CSPH',
+  },
+  {
+    id: 'csph-agent',
+    name: 'Agent de Contrôle & Enquêteur Terrain',
+    description: 'Visites de contrôle sur sites, enquêtes sur anomalies et constatations contradictoires.',
+    baseRole: 'AGENT',
+    targetOrgType: 'CSPH',
+  },
+  {
+    id: 'csph-integrator',
+    name: 'Intégrateur & Maintenance Matériel IoT',
+    description: 'Gestion du parc de traceurs GPS, lecteurs RFID, terminaux PDA et mises à jour firmware.',
+    baseRole: 'INTEGRATEUR',
+    targetOrgType: 'CSPH',
+  },
+]
 
 export type { Role } from '@lpg/types'
