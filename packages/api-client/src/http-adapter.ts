@@ -13,6 +13,41 @@ function resolveBaseURL(override?: string): string {
   return 'http://localhost:8080/api/v1'
 }
 
+function deriveSystemRole(raw: any): string {
+  const roleCandidate = raw.roles && raw.roles.length > 0 ? String(raw.roles[0]).toUpperCase().replace(/^ROLE_/, '') : ''
+  
+  if (roleCandidate === 'MARKETEUR' || roleCandidate === 'MARKETER' || roleCandidate === 'GEST_STK' || roleCandidate === 'MKT') {
+    return 'MARKETEUR'
+  }
+  if (roleCandidate === 'TRANSPORTEUR' || roleCandidate === 'TRANSPORTER' || roleCandidate === 'TRP') {
+    return 'TRANSPORTEUR'
+  }
+  if (roleCandidate === 'ADMIN') return 'ADMIN'
+  if (roleCandidate === 'SUPERADMIN') return 'SUPERADMIN'
+  if (roleCandidate === 'SUPERVISOR' || roleCandidate === 'SUPERVISEUR') return 'SUPERVISOR'
+  if (roleCandidate === 'AGENT') return 'AGENT'
+  if (roleCandidate === 'INTEGRATEUR' || roleCandidate === 'INTEGRATOR') return 'INTEGRATEUR'
+  if (roleCandidate === 'LIVREUR' || roleCandidate === 'DRIVER') return 'LIVREUR'
+
+  // Fallback by username or org prefix
+  const username = String(raw.username || '').toLowerCase()
+  const orgId = String(raw.orgId || raw.organizationId || '').toUpperCase()
+
+  if (username.startsWith('gest.') || username.includes('mkt') || orgId.startsWith('MKT') || orgId.includes('SCTM') || orgId.includes('CAMGAZ') || orgId.includes('GPL')) {
+    return 'MARKETEUR'
+  }
+  if (username.startsWith('resp.') || username.includes('trans') || orgId.startsWith('TRP') || orgId.includes('TRANS')) {
+    return 'TRANSPORTEUR'
+  }
+  if (username.startsWith('superadmin')) return 'SUPERADMIN'
+  if (username.startsWith('superviseur') || username.startsWith('supervisor')) return 'SUPERVISOR'
+  if (username.startsWith('agent')) return 'AGENT'
+  if (username.startsWith('integrateur') || username.startsWith('tech')) return 'INTEGRATEUR'
+  if (username.startsWith('admin')) return 'ADMIN'
+
+  return 'MARKETEUR'
+}
+
 function mapLoginResponseToAuthResult(raw: any): AuthResult {
   if (!raw) {
     throw new Error('Données d\'authentification invalides de la part du serveur')
@@ -21,12 +56,15 @@ function mapLoginResponseToAuthResult(raw: any): AuthResult {
     return raw as AuthResult
   }
 
-  const rawRole = raw.roles && raw.roles.length > 0 ? String(raw.roles[0]).replace(/^ROLE_/, '') : 'SUPERADMIN'
+  const systemRole = deriveSystemRole(raw)
   const displayName = raw.displayName || raw.username || 'Utilisateur'
   const parts = displayName.trim().split(' ')
   const firstName = parts[0] || 'Utilisateur'
   const lastName = parts.slice(1).join(' ') || ''
-  const email = raw.username && raw.username.includes('@') ? raw.username : `${raw.username || 'user'}@csph.cm`
+  const email = raw.username && raw.username.includes('@') ? raw.username : `${raw.username || 'user'}@gpl.cm`
+
+  const orgId = raw.orgId || raw.organizationId || (systemRole === 'MARKETEUR' ? 'org-0002-sctm-0000-000000000001' : undefined)
+  const orgName = raw.orgName || (systemRole === 'MARKETEUR' ? 'SCTM - Société Camerounaise de Transformation Métallique' : (systemRole === 'TRANSPORTEUR' ? 'Express GPL Transport' : 'CSPH Siège'))
 
   return {
     access_token: raw.accessToken || raw.access_token,
@@ -36,9 +74,9 @@ function mapLoginResponseToAuthResult(raw: any): AuthResult {
       email: email,
       first_name: firstName,
       last_name: lastName,
-      system_role: rawRole.toUpperCase() as any,
-      org_id: raw.orgId || raw.organizationId,
-      org_name: raw.orgName,
+      system_role: systemRole as any,
+      org_id: orgId,
+      org_name: orgName,
     },
   }
 }
