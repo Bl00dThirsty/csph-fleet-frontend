@@ -117,7 +117,7 @@ export function mapBackendTourToDeliveryTour(raw: any): any {
     transporter_org_id: raw.transporterOrganizationId || raw.transporter_org_id,
     vehicle_id: raw.vehicleId || raw.vehicle_id,
     driver_id: raw.driverId || raw.driver_id,
-    livreur_user_id: raw.livreurPersonId || raw.livreur_user_id,
+    livreur_user_id: raw.driverPersonId || raw.livreurPersonId || raw.livreur_user_id,
     assigned_by_transporter_user_id: raw.assignedByTransporterPersonId || raw.assigned_by_transporter_user_id,
     transporter_assigned_at: raw.transporterAssignedAt || raw.transporter_assigned_at,
     sent_to_transporter_at: raw.sentToTransporterAt || raw.sent_to_transporter_at,
@@ -167,7 +167,7 @@ function mapTourPayloadToBackend(body: any): any {
   if (body.transporter_org_id !== undefined) mapped.transporterOrganizationId = body.transporter_org_id
   if (body.vehicle_id !== undefined) mapped.vehicleId = body.vehicle_id
   if (body.driver_id !== undefined) mapped.driverId = body.driver_id
-  if (body.livreur_user_id !== undefined) mapped.livreurPersonId = body.livreur_user_id
+  if (body.livreur_user_id !== undefined) mapped.driverPersonId = body.livreur_user_id
   if (body.requested_quantity !== undefined) mapped.requestedQuantity = body.requested_quantity
   if (body.loaded_quantity !== undefined) mapped.loadedQuantity = body.loaded_quantity
   if (body.delivered_quantity !== undefined) mapped.deliveredQuantity = body.delivered_quantity

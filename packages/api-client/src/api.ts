@@ -199,10 +199,10 @@ export function createApi(adapter: ApiAdapter) {
           headers: { 'Content-Type': 'application/json' },
         })
       },
-      assignDriver(id: string, driverId?: string, livreurPersonId?: string) {
+      assignDriver(id: string, driverId?: string, driverPersonId?: string) {
         const query = new URLSearchParams()
         if (driverId) query.set('driverId', driverId)
-        if (livreurPersonId) query.set('livreurPersonId', livreurPersonId)
+        if (driverPersonId) query.set('driverPersonId', driverPersonId)
         const qStr = query.toString() ? `?${query.toString()}` : ''
         return request<any>(`/tours/${id}/assign-driver${qStr}`, {
           method: 'POST',
