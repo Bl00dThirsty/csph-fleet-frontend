@@ -7,10 +7,12 @@ type AccessTokenGetter = () => string | null
 type UnauthorizedHandler = () => void
 
 function resolveBaseURL(override?: string): string {
-  if (override) return override
-  const envUrl = (import.meta as any).env?.VITE_API_BASE_URL
-  if (envUrl) return envUrl
-  return 'http://localhost:8080/api/v1'
+  let url = override || (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+  url = url.trim().replace(/\/+$/, '')
+  if (url.includes('/v1/api')) {
+    url = url.replace(/\/v1\/api/, '/api/v1')
+  }
+  return url
 }
 
 function deriveSystemRole(raw: any): string {
