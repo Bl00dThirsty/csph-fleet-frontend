@@ -14,6 +14,75 @@ export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
 
+const BACKEND_PROFILES = [
+  {
+    id: 'admin.cspHq',
+    username: 'admin.cspHq',
+    email: 'admin.cspHq@cspHq.cm',
+    first_name: 'Admin',
+    last_name: 'CSPH',
+    system_role: 'ADMIN',
+    org_id: 'CSPH',
+    org_name: 'CSPH Direction',
+    password: 'Password123!',
+  },
+  {
+    id: 'superadmin.cspHq',
+    username: 'superadmin.cspHq',
+    email: 'emmanuel.mbarga@cspHq.cm',
+    first_name: 'Emmanuel',
+    last_name: 'Mbarga',
+    system_role: 'SUPERADMIN',
+    org_id: 'CSPH',
+    org_name: 'CSPH Direction Générale',
+    password: 'Password123!',
+  },
+  {
+    id: 'gest.gpl',
+    username: 'gest.gpl',
+    email: 'alice.fouda@gpl.cm',
+    first_name: 'Alice',
+    last_name: 'Fouda',
+    system_role: 'MARKETEUR',
+    org_id: 'MKT-GPL',
+    org_name: 'GPL Distribution (Marketeur)',
+    password: 'Password123!',
+  },
+  {
+    id: 'resp.abc',
+    username: 'resp.abc',
+    email: 'jacques.tabi@abctransport.cm',
+    first_name: 'Jacques',
+    last_name: 'Tabi',
+    system_role: 'TRANSPORTEUR',
+    org_id: 'TRP-ABC',
+    org_name: 'ABC Transport & Logistique',
+    password: 'Password123!',
+  },
+  {
+    id: 'chauffeur.abc1',
+    username: 'chauffeur.abc1',
+    email: 'pierre.essomba@abctransport.cm',
+    first_name: 'Pierre',
+    last_name: 'Essomba',
+    system_role: 'LIVREUR',
+    org_id: 'TRP-ABC',
+    org_name: 'ABC Transport - Chauffeur',
+    password: 'Password123!',
+  },
+  {
+    id: 'operateur.dla',
+    username: 'operateur.dla',
+    email: 'jean.kouam@depot-dla.cm',
+    first_name: 'Jean',
+    last_name: 'Kouam',
+    system_role: 'AGENT',
+    org_id: 'DEP-DLA',
+    org_name: 'SCDP Dépôt Douala',
+    password: 'Password123!',
+  },
+]
+
 function LoginPage() {
   const login = useAuthStore((s) => s.login)
   const setActiveRole = useRoleStore((s) => s.setActiveRole)
@@ -27,13 +96,13 @@ function LoginPage() {
   const [directPassword, setDirectPassword] = useState('Password123!')
 
   // Demo picker state
-  const [selectedUserId, setSelectedUserId] = useState<string>(fakeProfiles[0]!.id)
-  const [demoPassword, setDemoPassword] = useState('password')
+  const [selectedUserId, setSelectedUserId] = useState<string>(BACKEND_PROFILES[0]!.id)
+  const [demoPassword, setDemoPassword] = useState('Password123!')
 
   const [submitting, setSubmitting] = useState(false)
 
-  const selectedUser: FakeProfile =
-    fakeProfiles.find((u) => u.id === selectedUserId) ?? fakeProfiles[0]!
+  const selectedUser =
+    BACKEND_PROFILES.find((u) => u.id === selectedUserId) ?? BACKEND_PROFILES[0]!
 
   useEffect(() => {
     if (authMode === 'demo') {
@@ -59,7 +128,7 @@ function LoginPage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await login(selectedUser.email, demoPassword)
+      await login(selectedUser.username, demoPassword)
       toast.success(`Connecté sous le profil ${selectedUser.first_name} ${selectedUser.last_name}`)
       navigate({ to: '/' })
     } catch (err: any) {
@@ -135,6 +204,38 @@ function LoginPage() {
                     </p>
                   </div>
 
+                  <div className='flex flex-wrap gap-1.5 pt-1'>
+                    <span className='text-xs text-muted-foreground mr-1 self-center'>Remplir :</span>
+                    <button
+                      type='button'
+                      onClick={() => { setUsernameOrEmail('admin.cspHq'); setDirectPassword('Password123!') }}
+                      className='text-xs bg-secondary text-secondary-foreground hover:bg-secondary/80 px-2 py-0.5 rounded-full transition-colors'
+                    >
+                      Admin CSPH
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => { setUsernameOrEmail('gest.gpl'); setDirectPassword('Password123!') }}
+                      className='text-xs bg-secondary text-secondary-foreground hover:bg-secondary/80 px-2 py-0.5 rounded-full transition-colors'
+                    >
+                      Marketeur (GPL)
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => { setUsernameOrEmail('resp.abc'); setDirectPassword('Password123!') }}
+                      className='text-xs bg-secondary text-secondary-foreground hover:bg-secondary/80 px-2 py-0.5 rounded-full transition-colors'
+                    >
+                      Transporteur
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => { setUsernameOrEmail('chauffeur.abc1'); setDirectPassword('Password123!') }}
+                      className='text-xs bg-secondary text-secondary-foreground hover:bg-secondary/80 px-2 py-0.5 rounded-full transition-colors'
+                    >
+                      Livreur
+                    </button>
+                  </div>
+
                   <Button type='submit' className='w-full' disabled={submitting}>
                     {submitting ? 'Connexion en cours…' : 'Se connecter (API)'}
                   </Button>
@@ -146,7 +247,7 @@ function LoginPage() {
                   <div className='space-y-2'>
                     <Label htmlFor='user'>Sélectionner un profil démo</Label>
                     <UserPicker
-                      users={fakeProfiles}
+                      users={BACKEND_PROFILES}
                       value={selectedUserId}
                       onChange={setSelectedUserId}
                     />
