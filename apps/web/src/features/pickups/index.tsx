@@ -17,7 +17,11 @@ import { useAuthStore } from '@/store/auth-store'
 
 export function PickupsPage({ role }: { role: Role }) {
   const user = useAuthStore((s) => s.user)
-  const allRows = usePickupsStore((s) => s.getPickupsView())
+  const storePickups = usePickupsStore((s) => s.pickups)
+  const allRows = useMemo(
+    () => usePickupsStore.getState().getPickupsView(),
+    [storePickups]
+  )
   const assignedVehicles = usePickupsStore((s) => s.assignedVehicles)
   const [createOpen, setCreateOpen] = useState(false)
   const [validateOpen, setValidateOpen] = useState<Pickup | null>(null)
