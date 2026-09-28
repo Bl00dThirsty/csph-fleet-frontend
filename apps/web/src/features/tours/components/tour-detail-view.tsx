@@ -1,4 +1,4 @@
-import { type ElementType } from 'react'
+import { useMemo, useState, type ElementType } from 'react'
 import {
   AlertTriangle,
   ArrowRight,
@@ -9,8 +9,19 @@ import {
   Truck,
   UserRound,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Card,
   CardContent,
@@ -20,11 +31,17 @@ import {
 } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import {
+  checkpointStatusLabels,
   routeSeverityClasses,
   routeSeverityLabels,
   routeStatusLabels,
+  type CheckpointStatus,
   type TourActivity,
 } from '../data/tour-activity'
+import type { Checkpoint } from '@lpg/types'
+import { useToursStore } from '@/store/tours-store'
+import { tourActions } from '../data/tour-machine'
+import { TourActions, isCloseAllowed } from './tour-actions'
 import { TourCorridorMap } from './tour-corridor-map'
 import { TourLpgVariationPanel } from './tour-lpg-variation-panel'
 import { TourTelemetryChart } from './tour-telemetry-chart'
@@ -35,6 +52,21 @@ type TourDetailViewProps = {
 }
 
 export function TourDetailView({ trip }: TourDetailViewProps) {
+  const checkpointsByTour = useToursStore((s) => s.checkpointsByTour[trip?.id ?? ''])
+  const allCheckpoints = useToursStore((s) => s.checkpoints)
+  const tourCheckpoints: Checkpoint[] = useMemo(() => {
+    if (!trip) return []
+    if (checkpointsByTour) return checkpointsByTour
+    return allCheckpoints.filter((c) => (c.tournee_id ?? c.tour_id) === trip.id)
+  }, [trip, checkpointsByTour, allCheckpoints])
+  const checkpointById = useMemo(
+    () => new Map(tourCheckpoints.map((c) => [c.id, c])),
+    [tourCheckpoints],
+  )
+  const [busyCheckpointId, setBusyCheckpointId] = useState<string | null>(null)
+  const [skipTargetId, setSkipTargetId] = useState<string | null>(null)
+  const [skipReason, setSkipReason] = useState('')
+
   if (!trip) {
     return (
       <Card>
@@ -48,6 +80,44 @@ export function TourDetailView({ trip }: TourDetailViewProps) {
         </CardContent>
       </Card>
     )
+  }
+
+  const closeOfferedByMachine = tourActions({
+    status: trip.tourneeStatus,
+    execution_mode: trip.execution_mode,
+  }).includes('close')
+  const closeBlockedByCheckpoints = closeOfferedByMachine && !isCloseAllowed(tourCheckpoints)
+
+  async function runCheckpointAction(checkpointId: string, kind: 'reach' | 'complete') {
+    setBusyCheckpointId(checkpointId)
+    try {
+      if (kind === 'reach') {
+        await useToursStore.getState().reachCheckpoint(checkpointId)
+        toast.success('Arrivée enregistrée')
+      } else {
+        await useToursStore.getState().completeCheckpoint(checkpointId)
+        toast.success('Point de contrôle terminé')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Action impossible')
+    } finally {
+      setBusyCheckpointId(null)
+    }
+  }
+
+  async function confirmSkip() {
+    if (!skipTargetId || !skipReason.trim()) return
+    setBusyCheckpointId(skipTargetId)
+    try {
+      await useToursStore.getState().skipCheckpoint(skipTargetId, skipReason.trim())
+      toast.success('Point de contrôle sauté')
+      setSkipTargetId(null)
+      setSkipReason('')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Action impossible')
+    } finally {
+      setBusyCheckpointId(null)
+    }
   }
 
   return (
@@ -113,7 +183,7 @@ export function TourDetailView({ trip }: TourDetailViewProps) {
                   variant='outline'
                   className='border-transparent bg-muted/35 text-foreground'
                 >
-                  Prochaine étape: {trip.nextStop.site.name}
+                  Prochaine étape: {trip.nextStop?.site.name ?? '—'}
                 </Badge>
               </div>
 
@@ -202,6 +272,23 @@ export function TourDetailView({ trip }: TourDetailViewProps) {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Actions de la tournée</CardTitle>
+          <CardDescription>
+            Transitions validées par le serveur — un refus est affiché sans modifier le suivi.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-3'>
+          <TourActions tour={trip} checkpoints={tourCheckpoints} />
+          {closeBlockedByCheckpoints && (
+            <p className='text-sm text-amber-700 dark:text-amber-300'>
+              Clôture impossible : tous les points de contrôle doivent être terminés ou sautés.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
        <TourLpgVariationPanel trip={trip} formatQuantity={(v) => formatQuantity(v, trip.tourneeType)} zeroUnit={trip.tourneeType === 'VRAC' ? '0 TM' : '0 btl'} />
 
       <section className='grid gap-4 2xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]'>
@@ -223,7 +310,7 @@ export function TourDetailView({ trip }: TourDetailViewProps) {
           </CardHeader>
           <CardContent className='space-y-4'>
             {trip.stops.map((stop, index) => {
-              const isCurrent = !stop.completed && stop.id === trip.nextStop.id
+              const isCurrent = !stop.completed && stop.id === trip.nextStop?.id
 
               return (
                 <div key={stop.id} className='flex gap-4'>
@@ -298,6 +385,17 @@ export function TourDetailView({ trip }: TourDetailViewProps) {
                     <p className='mt-3 text-sm text-muted-foreground'>
                       {stop.note}
                     </p>
+
+                    <StopCheckpointControls
+                      status={checkpointById.get(stop.id)?.status ?? stop.checkpointStatus}
+                      disabled={busyCheckpointId === stop.id}
+                      onReach={() => runCheckpointAction(stop.id, 'reach')}
+                      onComplete={() => runCheckpointAction(stop.id, 'complete')}
+                      onSkip={() => {
+                        setSkipTargetId(stop.id)
+                        setSkipReason('')
+                      }}
+                    />
                   </div>
                 </div>
               )
@@ -365,6 +463,89 @@ export function TourDetailView({ trip }: TourDetailViewProps) {
           </CardContent>
         </Card>
       </section>
+
+      <Dialog
+        open={skipTargetId !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setSkipTargetId(null)
+            setSkipReason('')
+          }
+        }}
+      >
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Sauter le point de contrôle</DialogTitle>
+            <DialogDescription>
+              Le motif du saut est obligatoire et sera transmis au serveur.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-2 py-2'>
+            <label htmlFor='skip-reason' className='text-sm font-medium'>
+              Motif du saut
+            </label>
+            <Textarea
+              id='skip-reason'
+              value={skipReason}
+              onChange={(e) => setSkipReason(e.target.value)}
+              placeholder='Ex. client fermé, accès impossible…'
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setSkipTargetId(null)
+                setSkipReason('')
+              }}
+            >
+              Annuler
+            </Button>
+            <Button
+              disabled={!skipReason.trim() || busyCheckpointId !== null}
+              onClick={confirmSkip}
+            >
+              Confirmer le saut
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function StopCheckpointControls({
+  status,
+  disabled,
+  onReach,
+  onComplete,
+  onSkip,
+}: {
+  status: CheckpointStatus | undefined
+  disabled: boolean
+  onReach: () => void
+  onComplete: () => void
+  onSkip: () => void
+}) {
+  if (status === undefined || status === 'COMPLETED' || status === 'SKIPPED') return null
+  return (
+    <div className='mt-3 flex flex-wrap items-center gap-2'>
+      <Badge variant='outline' className='border-transparent bg-background/75'>
+        {checkpointStatusLabels[status]}
+      </Badge>
+      {status === 'PENDING' && (
+        <Button size='sm' onClick={onReach} disabled={disabled}>
+          Marquer arrivé
+        </Button>
+      )}
+      {status === 'REACHED' && (
+        <Button size='sm' onClick={onComplete} disabled={disabled}>
+          Terminer le point
+        </Button>
+      )}
+      <Button size='sm' variant='outline' onClick={onSkip} disabled={disabled}>
+        Sauter le point
+      </Button>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import { AxiosError } from 'axios'
 import {
@@ -13,6 +13,9 @@ import { NotFoundError } from '@/features/errors/not-found-error'
 import { DirectionProvider } from './context/direction-provider'
 import { FontProvider } from './context/font-provider'
 import { ThemeProvider } from './context/theme-provider'
+import { usePickupsStore } from './store/pickups-store'
+import { useToursStore } from './store/tours-store'
+import { useUsersStore } from './store/users-store'
 // Generated Routes
 import { routeTree } from './routeTree.gen'
 // Styles
@@ -79,6 +82,31 @@ declare module '@tanstack/react-router' {
   }
 }
 
+// 3.8 — Single mount hydration for fetchUsers/fetchTours/fetchPickups.
+// The module-level promise guards against double-run (React StrictMode
+// mounts effects twice in dev): every caller shares the one in-flight
+// request, and per-page refreshes no-op while the data is fresh (see
+// @/lib/hydration) instead of firing duplicate network storms.
+let appHydrationPromise: Promise<void> | null = null
+
+function hydrateAppOnce(): Promise<void> {
+  if (!appHydrationPromise) {
+    appHydrationPromise = Promise.allSettled([
+      useUsersStore.getState().fetchUsers(),
+      useToursStore.getState().fetchTours(),
+      usePickupsStore.getState().fetchPickups(),
+    ]).then(() => undefined)
+  }
+  return appHydrationPromise
+}
+
+function AppHydration() {
+  useEffect(() => {
+    void hydrateAppOnce()
+  }, [])
+  return null
+}
+
 // Render the app
 const rootElement = document.getElementById('root')!
 if (!rootElement.innerHTML) {
@@ -89,6 +117,7 @@ if (!rootElement.innerHTML) {
         <ThemeProvider defaultTheme='light'>
           <FontProvider>
             <DirectionProvider>
+              <AppHydration />
               <RouterProvider router={router} />
             </DirectionProvider>
           </FontProvider>

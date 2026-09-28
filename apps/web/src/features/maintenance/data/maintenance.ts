@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 
 export type MaintenanceItemType = 'DEVICE' | 'VEHICLE'
 
@@ -18,8 +18,8 @@ export interface MaintenanceView {
 
 export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
   CRITIQUE: 'Critique',
-  AOA: 'À traiter',
-  RESOLU: 'Résolu',
+  AOA: 'Ã€ traiter',
+  RESOLU: 'RÃ©solu',
 }
 
 export function maintenanceStatusLabel(status: MaintenanceStatus): string {
@@ -28,7 +28,7 @@ export function maintenanceStatusLabel(status: MaintenanceStatus): string {
 
 export const ITEM_TYPE_LABELS: Record<MaintenanceItemType, string> = {
   DEVICE: 'Appareil',
-  VEHICLE: 'Véhicule',
+  VEHICLE: 'VÃ©hicule',
 }
 
 export function itemTypeLabel(type: MaintenanceItemType): string {
@@ -67,7 +67,7 @@ export function getMaintenanceItems(): MaintenanceView[] {
         reason,
         balLevel: device.battery_level ?? undefined,
         lastSync: device.last_sync ?? undefined,
-        orgName: device.org_id ? orgNameById[device.org_id] ?? '—' : '—',
+        orgName: device.org_id ? orgNameById[device.org_id] ?? 'â€”' : 'â€”',
         updatedAt: device.last_sync ?? '2026-01-01',
       }
     })
@@ -83,8 +83,8 @@ export function getMaintenanceItems(): MaintenanceView[] {
       itemType: 'VEHICLE' as const,
       itemName: vehicle.license_plate,
       status: 'AOA' as MaintenanceStatus,
-      reason: 'Certificat expiré',
-      orgName: orgNameById[vehicle.org_id] ?? '—',
+      reason: 'Certificat expirÃ©',
+      orgName: orgNameById[vehicle.org_id] ?? 'â€”',
       updatedAt: vehicle.certificate_expiry_at ?? vehicle.updated_at ?? '2026-01-01',
     }))
 

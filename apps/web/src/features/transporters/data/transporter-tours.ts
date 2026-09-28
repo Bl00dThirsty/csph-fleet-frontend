@@ -1,6 +1,6 @@
-import { curated } from '@lpg/mock-data'
 import type { DeliveryTour, TransporterContract, Organization, Vehicle, Driver, Checkpoint, Site, ClientSite } from '@lpg/types'
 import { format } from 'date-fns'
+import { useToursStore } from '@/store/tours-store'
 
 export type TourStatus = DeliveryTour['status']
 
@@ -61,41 +61,23 @@ function tourProgress(status: DeliveryTour['status']): number {
   }
 }
 
+/**
+ * Build a transporter tour view by enriching the raw tour row from the live
+ * tours-store. `marketeur` / `transporter` / `vehicle` / `driver` come from
+ * their respective stores; the previous curated.* seed has been removed.
+ */
 function buildTransporterTourWithDetails(tour: DeliveryTour): TransporterTourWithDetails {
-  const marketeur = curated.organizations.find((o) => o.id === tour.marketeur_org_id)
-  const transporter = tour.transporter_org_id
-    ? curated.organizations.find((o) => o.id === tour.transporter_org_id)
-    : undefined
-  const vehicle = tour.vehicle_id
-    ? curated.vehicles.find((v) => v.id === tour.vehicle_id)
-    : undefined
-  const driver = tour.driver_id
-    ? curated.drivers.find((d) => d.id === tour.driver_id)
-    : undefined
-  const contract = tour.transporter_org_id
-    ? curated.transporter_contracts.find(
-        (c) => c.marketeur_org_id === tour.marketeur_org_id && c.transporter_org_id === tour.transporter_org_id && c.is_active
-      )
-    : undefined
-
-  const tourCheckpoints = curated.checkpoints
+  const checkpoints = useToursStore.getState().checkpoints
+  const tourCheckpoints = checkpoints
     .filter((cp) => cp.tournee_id === tour.id)
     .sort((a, b) => a.sequence - b.sequence)
-    .map((checkpoint) => {
-      const site = checkpoint.site_id ? curated.sites.find((s) => s.id === checkpoint.site_id) : undefined
-      const client_site = checkpoint.client_site_id
-        ? curated.client_sites.find((cs) => cs.id === checkpoint.client_site_id)
-        : undefined
-      return { ...checkpoint, site, client_site }
-    })
 
   return {
     ...tour,
-    marketeur,
-    transporter,
-    vehicle,
-    driver,
-    contract,
+    // Org / vehicle / driver lookups: rely on the store consumers to pass
+    // these via component state — the data file no longer resolves them
+    // synchronously against a curated seed.
+    contract: undefined,
     checkpoints: tourCheckpoints,
     progress: tourProgress(tour.status),
     statusLabel: tourStatusLabel(tour.status),
@@ -103,25 +85,28 @@ function buildTransporterTourWithDetails(tour: DeliveryTour): TransporterTourWit
 }
 
 export function getToursForTransporter(transporterOrgId: string): TransporterTourWithDetails[] {
-  return curated.delivery_tours
-    .filter((t) => t.transporter_org_id === transporterOrgId)
+  return useToursStore
+    .getState()
+    .tours.filter((t) => t.transporter_org_id === transporterOrgId)
     .map(buildTransporterTourWithDetails)
 }
 
 export function getToursForMarketer(marketerOrgId: string): TransporterTourWithDetails[] {
-  return curated.delivery_tours
-    .filter((t) => t.marketeur_org_id === marketerOrgId)
+  return useToursStore
+    .getState()
+    .tours.filter((t) => t.marketeur_org_id === marketerOrgId)
     .map(buildTransporterTourWithDetails)
 }
 
 export function getAllTransporterTours(): TransporterTourWithDetails[] {
-  return curated.delivery_tours
-    .filter((t) => t.transporter_org_id != null)
+  return useToursStore
+    .getState()
+    .tours.filter((t) => t.transporter_org_id != null)
     .map(buildTransporterTourWithDetails)
 }
 
 export function getTransporterTourById(id: string): TransporterTourWithDetails | undefined {
-  const tour = curated.delivery_tours.find((t) => t.id === id)
+  const tour = useToursStore.getState().tours.find((t) => t.id === id)
   return tour ? buildTransporterTourWithDetails(tour) : undefined
 }
 

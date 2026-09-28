@@ -1,4 +1,4 @@
-import { pickup_requests, sites } from '@lpg/mock-data'
+﻿import { pickup_requests, sites } from '@/lib/entity-data'
 import type { PickupRequest, PickupStatus } from '@lpg/types'
 
 export interface SupplyRequest {
@@ -15,10 +15,10 @@ export interface SupplyRequest {
 
 export const statusLabels: Record<PickupStatus, string> = {
   DRAFT: 'Brouillon',
-  VALIDATED: 'Validée',
+  VALIDATED: 'ValidÃ©e',
   INPROGRESS: 'En cours',
-  COMPLETED: 'Terminée',
-  CANCELLED: 'Annulée',
+  COMPLETED: 'TerminÃ©e',
+  CANCELLED: 'AnnulÃ©e',
 }
 
 export const statusClasses: Record<PickupStatus, string> = {

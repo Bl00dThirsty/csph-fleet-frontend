@@ -1,4 +1,4 @@
-import { redressements, reconciliations, declarations, organizations } from '@lpg/mock-data'
+﻿import { redressements, reconciliations, declarations, organizations } from '@/lib/entity-data'
 import type { RedressementStatus } from '@lpg/types'
 
 export type { RedressementStatus }
@@ -20,9 +20,9 @@ export interface RedressementView {
 }
 
 export const redressementStatusLabels: Record<RedressementStatus, string> = {
-  ISSUED: 'Émis',
-  PAID: 'Payé',
-  WAIVED: 'Annulé',
+  ISSUED: 'Ã‰mis',
+  PAID: 'PayÃ©',
+  WAIVED: 'AnnulÃ©',
 }
 
 export const redressementStatusOptions: readonly { label: string; value: RedressementStatus }[] = (
@@ -45,8 +45,8 @@ export function getRedressements(): RedressementView[] {
       return {
         id: r.id,
         reference: `RED-${String(i + 1).padStart(3, '0')}`,
-        reconciliation_reference: reconIndex.get(r.reconciliation_id) ?? '—',
-        marketeur_name: decl ? orgName(decl.marketeur_org_id) : '—',
+        reconciliation_reference: reconIndex.get(r.reconciliation_id) ?? 'â€”',
+        marketeur_name: decl ? orgName(decl.marketeur_org_id) : 'â€”',
         amount: r.amount,
         amount_label: `${r.amount.toLocaleString('fr-FR')} XAF`,
         currency: 'XAF',

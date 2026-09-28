@@ -1,4 +1,4 @@
-import { reconciliations, declarations, organizations, getSettingNumber } from '@lpg/mock-data'
+﻿import { reconciliations, declarations, organizations, getSettingNumber } from '@/lib/entity-data'
 import type { ReconciliationStatus } from '@lpg/types'
 
 export type { ReconciliationStatus }
@@ -20,8 +20,8 @@ export interface ReconciliationView {
 
 export const reconciliationStatusLabels: Record<ReconciliationStatus, string> = {
   PENDING: 'En attente',
-  VERIFIED: 'Vérifiée',
-  REDRESSEMENTAPPLIED: 'Redressement appliqué',
+  VERIFIED: 'VÃ©rifiÃ©e',
+  REDRESSEMENTAPPLIED: 'Redressement appliquÃ©',
 }
 
 export const reconciliationStatusOptions: readonly { label: string; value: ReconciliationStatus }[] = (
@@ -46,8 +46,8 @@ export function getReconciliations(): ReconciliationView[] {
       return {
         id: r.id,
         reference: `REC-${String(i + 1).padStart(3, '0')}`,
-        declaration_reference: declByRef.get(r.declaration_id) ?? '—',
-        marketeur_name: decl ? orgName(decl.marketeur_org_id) : '—',
+        declaration_reference: declByRef.get(r.declaration_id) ?? 'â€”',
+        marketeur_name: decl ? orgName(decl.marketeur_org_id) : 'â€”',
         declared_volume: declared,
         tracked_volume: r.tracked_volume,
         volume_gap: r.volume_gap,

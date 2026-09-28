@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import { Plus, Truck as TruckIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -16,7 +17,16 @@ export function TransportersPage() {
   const search = route.useSearch()
   const navigate = route.useNavigate()
   const crud = useEntityCrud<Organization>('organizations', 'transporters', ['transporters'])
-  const allTransporters = getTransporters()
+  const [allTransporters, setAllTransporters] = useState<Organization[]>([])
+  useEffect(() => {
+    let cancelled = false
+    getTransporters().then((rows) => {
+      if (!cancelled) setAllTransporters(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const user = useAuthStore((s) => s.user)
   const role = user?.system_role ?? 'LIVREUR'
   // FILTER: TRANSPORTEUR only sees their own org's transporters

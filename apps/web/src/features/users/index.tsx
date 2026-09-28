@@ -29,9 +29,9 @@ export function UsersPage() {
   const allUsers = useUsersStore((s) => s.users)
   const isLoading = useUsersStore((s) => s.isLoading)
 
-  // The store ships seeded with `curated.users`, so without this the page would
-  // never show a single real row from user-service. fetchUsers() replaces the
-  // seed and falls back to it if the API is unreachable.
+  // The store starts empty and is populated by fetchUsers() against the
+  // user-service Spring backend. There is no curated.* fallback — the page
+  // shows "0 collaborateur(s)" until the API answers, then the live rows.
   useEffect(() => {
     void useUsersStore.getState().fetchUsers()
   }, [])

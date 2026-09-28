@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type { Vehicle, VehicleType } from '@lpg/types'
 import { field, type FieldConfig, type FormValues } from '@/components/entity-crud'
 
@@ -16,11 +16,11 @@ export const vehicleFields: FieldConfig[] = [
   field.text('license_plate', 'Immatriculation', { required: true }),
   field.select('org_id', 'Organisation', orgOptions, { required: true }),
   field.select('type', 'Type', vehicleTypeOptions, { required: true }),
-  field.number('max_volume', 'Capacité (TM) — vrac', { help: 'Uniquement si type = VRAC.' }),
-  field.number('max_bottle_count', 'Capacité (bouteilles 50 kg)', { help: 'Uniquement si type = BOUTEILLES50KG.' }),
-  field.text('certificate_number', 'N° certificat de jaugeage'),
+  field.number('max_volume', 'CapacitÃ© (TM) â€” vrac', { help: 'Uniquement si type = VRAC.' }),
+  field.number('max_bottle_count', 'CapacitÃ© (bouteilles 50 kg)', { help: 'Uniquement si type = BOUTEILLES50KG.' }),
+  field.text('certificate_number', 'NÂ° certificat de jaugeage'),
   field.date('certificate_expiry_at', 'Expiration certificat'),
-  field.switchField('is_active', 'Véhicule actif'),
+  field.switchField('is_active', 'VÃ©hicule actif'),
 ]
 
 export function vehicleToForm(v: Vehicle): FormValues {

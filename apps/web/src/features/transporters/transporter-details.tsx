@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import { Truck as TruckIcon, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,13 +8,36 @@ import { TransporterOverview } from './components/transporter-overview'
 import { TransporterTrucksList } from './components/transporter-trucks-list'
 import { TransporterHistory } from './components/transporter-history'
 import { TransporterPendingTours } from './components/transporter-pending-tours'
+import type { Organization } from '@lpg/types'
 
 const route = getRouteApi('/_authenticated/transporters/$transporterId')
 
 export function TransporterDetailsPage() {
   const { transporterId } = route.useParams()
   const navigate = route.useNavigate()
-  const transporter = getTransporterById(transporterId)
+  const [transporter, setTransporter] = useState<Organization | undefined>(undefined)
+  const [resolved, setResolved] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getTransporterById(transporterId).then((t) => {
+      if (!cancelled) {
+        setTransporter(t)
+        setResolved(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [transporterId])
+
+  if (!resolved) {
+    return (
+      <main className='flex-1 p-4 sm:p-6'>
+        <p className='text-sm text-muted-foreground'>Chargement du transporteur…</p>
+      </main>
+    )
+  }
 
   if (!transporter) {
     return (

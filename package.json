@@ -9,6 +9,9 @@
     "dev:kill": "node scripts/dev-kill.js",
     "mock": "turbo run dev --filter @lpg/mock-api",
     "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:browser": "pnpm --filter @lpg/web test:full",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {

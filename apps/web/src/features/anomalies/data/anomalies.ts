@@ -1,4 +1,4 @@
-import { anomalies, anomaly_assignments, organizations, sites, client_sites, vehicles, users } from '@lpg/mock-data'
+﻿import { anomalies, anomaly_assignments, organizations, sites, client_sites, vehicles, users } from '@/lib/entity-data'
 import type {
   AnomalyCategory,
   AnomalyStatus,
@@ -30,24 +30,24 @@ export interface AnomalyView {
 }
 
 export const anomalyTypeLabels: Record<AnomalyType, string> = {
-  VOLUMEGAP: 'Écart de volume',
-  DEVIATIONROUTE: 'Déviation d\'itinéraire',
-  CHECKPOINTMISSED: 'Point de contrôle manqué',
-  SCANOUTOFSEQUENCE: 'Scan hors séquence',
-  SIPHONNAGE: 'Siphonnage suspecté',
+  VOLUMEGAP: 'Ã‰cart de volume',
+  DEVIATIONROUTE: 'DÃ©viation d\'itinÃ©raire',
+  CHECKPOINTMISSED: 'Point de contrÃ´le manquÃ©',
+  SCANOUTOFSEQUENCE: 'Scan hors sÃ©quence',
+  SIPHONNAGE: 'Siphonnage suspectÃ©',
   SUBSTITUTIONBOUTEILLES: 'Substitution bouteilles',
   FALSIFICATIONPREUVES: 'Falsification de preuves',
-  FILLINGILLEGAL: 'Remplissage illégal',
-  DIVERSIONSUBSIDIES: 'Détournement subventions',
-  PDAUNSYNCED: 'PDA non synchronisé',
+  FILLINGILLEGAL: 'Remplissage illÃ©gal',
+  DIVERSIONSUBSIDIES: 'DÃ©tournement subventions',
+  PDAUNSYNCED: 'PDA non synchronisÃ©',
   BATTERYCRITICAL: 'Batterie critique',
   GPSFAILURE: 'Panne GPS',
   KAFKATIMEOUT: 'Timeout Kafka',
-  IOTDEGRADATION: 'Dégradation IoT',
+  IOTDEGRADATION: 'DÃ©gradation IoT',
   SERVERUNAVAILABLE: 'Serveur indisponible',
-  TOURNEEUNASSIGNEDTOOLONG: 'Tournée non assignée',
-  TRANSPORTERNOACK: 'Accusé transporteur absent',
-  GPSREMOVED: 'GPS retiré',
+  TOURNEEUNASSIGNEDTOOLONG: 'TournÃ©e non assignÃ©e',
+  TRANSPORTERNOACK: 'AccusÃ© transporteur absent',
+  GPSREMOVED: 'GPS retirÃ©',
   DEVICEOFFLINE: 'Appareil hors ligne',
 }
 
@@ -59,16 +59,16 @@ export const anomalyCategoryLabels: Record<AnomalyCategory, string> = {
 export const anomalyStatusLabels: Record<AnomalyStatus, string> = {
   NOUVEAU: 'Nouveau',
   ENCOURS: 'En cours',
-  RESOLU: 'Résolu',
-  FERME: 'Fermé',
+  RESOLU: 'RÃ©solu',
+  FERME: 'FermÃ©',
 }
 
 export const severityLabels: Record<RiskLevel, string> = {
   FAIBLE: 'Faible',
-  MODERE: 'Modéré',
-  ELEVE: 'Élevé',
+  MODERE: 'ModÃ©rÃ©',
+  ELEVE: 'Ã‰levÃ©',
   CRITIQUE: 'Critique',
-  CRITIQUEEXTREME: 'Critique extrême',
+  CRITIQUEEXTREME: 'Critique extrÃªme',
 }
 
 export const entityTypeLabels: Record<RiskEntityType, string> = {
@@ -76,10 +76,10 @@ export const entityTypeLabels: Record<RiskEntityType, string> = {
   TRANSPORTEUR: 'Transporteur',
   LIVREUR: 'Livreur',
   SITE: 'Site',
-  TOURNEE: 'Tournée',
+  TOURNEE: 'TournÃ©e',
   CLIENT: 'Client',
   CLIENTSITE: 'Site client',
-  VEHICLE: 'Véhicule',
+  VEHICLE: 'VÃ©hicule',
 }
 
 export const anomalyStatusOptions: readonly { label: string; value: AnomalyStatus }[] = (
@@ -87,7 +87,7 @@ export const anomalyStatusOptions: readonly { label: string; value: AnomalyStatu
 ).map((value) => ({ label: anomalyStatusLabels[value], value }))
 
 function entityName(entityType: RiskEntityType | null, entityId: string | null): string {
-  if (!entityId) return '—'
+  if (!entityId) return 'â€”'
   switch (entityType) {
     case 'SITE':
       return [...sites, ...client_sites].find((s) => s.id === entityId)?.name ?? entityId

@@ -1,8 +1,6 @@
-import { curated } from '@lpg/mock-data'
 import type {
   User as CuratedUser,
   MfaStatus,
-  Organization,
 } from '@lpg/types'
 import type { Role } from '@lpg/permissions'
 import { ROLE_LABELS } from '@/config/rbac/roles'
@@ -41,10 +39,6 @@ export interface UserView {
   updated_at: string
 }
 
-const ORG_NAME_BY_ID: Record<string, string> = Object.fromEntries(
-  (curated.organizations as Organization[]).map((org) => [org.id, org.name]),
-)
-
 export function userToView(user: CuratedUser): UserView {
   const roleCodes = user.role_codes ?? []
   // The list projection of /api/v1/users/ carries no roles at all, so a row
@@ -70,7 +64,10 @@ export function userToView(user: CuratedUser): UserView {
     role,
     roleLabel: ROLE_LABELS[role] ?? role,
     orgId: user.org_id,
-    orgName: ORG_NAME_BY_ID[user.org_id] ?? '—',
+    // orgName is resolved at render time against the live organization cache
+    // (set by the /users page once api.organizations.list() resolves). Until
+    // that arrives we fall back to the org id so the table never crashes.
+    orgName: (user as any).org_name ?? user.org_id ?? '—',
     status: user.is_active ? 'ACTIVE' : 'INACTIVE',
     mfaStatus: user.mfa_status ?? 'DISABLED',
     lastLogin: user.last_login_at ?? '—',

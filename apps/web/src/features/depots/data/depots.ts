@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type {
   Organization as CuratedOrganization,
   Region,
@@ -19,8 +19,8 @@ export interface DepotView {
 }
 
 const CITY_BY_REGION: Record<Region, string> = {
-  ADAMAOUA: 'Ngaoundéré',
-  CENTRE: 'Yaoundé',
+  ADAMAOUA: 'NgaoundÃ©rÃ©',
+  CENTRE: 'YaoundÃ©',
   EST: 'Bertoua',
   EXTREMENORD: 'Maroua',
   LITTORAL: 'Douala',
@@ -28,15 +28,19 @@ const CITY_BY_REGION: Record<Region, string> = {
   NORDOUEST: 'Bamenda',
   OUEST: 'Bafoussam',
   SUD: 'Ebolowa',
-  SUDOUEST: 'Buéa',
+  SUDOUEST: 'BuÃ©a',
 }
 
 function regionForDepot(orgId: string, idx: number): Region {
   const sites = curated.sites as CuratedSite[]
   const owningSite = sites.find((s) => s.org_id === orgId)
   if (owningSite) return owningSite.region
-  const regions = curated.regions.map((r) => r.code as Region)
-  return regions[idx % regions.length] ?? 'CENTRE'
+  // curated.regions is empty in the stub; fall back to a stable rotation.
+  const fallbackRegions: Region[] = [
+    'CENTRE', 'LITTORAL', 'ADAMAOUA', 'EST', 'EXTREMENORD',
+    'NORD', 'NORDOUEST', 'OUEST', 'SUD', 'SUDOUEST',
+  ]
+  return fallbackRegions[idx % fallbackRegions.length] ?? 'CENTRE'
 }
 
 export function getDepots(): DepotView[] {
@@ -51,7 +55,7 @@ export function getDepots(): DepotView[] {
         name: org.name,
         status: org.is_active ? 'ACTIVE' : 'SUSPENDED',
         region,
-        city: CITY_BY_REGION[region] ?? '—',
+        city: CITY_BY_REGION[region] ?? 'â€”',
         sites: sites.filter((s) => s.org_id === org.id).length,
         created_at: org.created_at ?? '2026-01-01',
         updated_at: org.updated_at ?? '2026-01-01',

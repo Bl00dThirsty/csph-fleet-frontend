@@ -1,5 +1,5 @@
-import { curated } from '@lpg/mock-data'
-import type { Vehicle as CuratedVehicle } from '@lpg/types'
+import { api } from '@lpg/api-client'
+import type { Vehicle } from '@lpg/types'
 
 export const truckStatusLabels: Record<string, string> = {
   AVAILABLE: 'Disponible',
@@ -8,8 +8,23 @@ export const truckStatusLabels: Record<string, string> = {
   INACTIVE: 'Inactif',
 }
 
-export function getTransporterTrucks(orgId?: string): CuratedVehicle[] {
-  const vehicles = curated.vehicles as CuratedVehicle[]
-  if (!orgId) return vehicles.filter((v) => v.is_active)
-  return vehicles.filter((v) => v.org_id === orgId && v.is_active)
+/**
+ * Empty placeholder for backwards compatibility with sync consumers. Pages
+ * should call `getTransporterTrucks()` on mount and store the result.
+ */
+export const transporterTrucks: Vehicle[] = []
+
+/**
+ * Live fetch — replaces the previous `curated.vehicles` seed. Optional
+ * `orgId` filter narrows the list to vehicles belonging to a transporter.
+ */
+export async function getTransporterTrucks(orgId?: string): Promise<Vehicle[]> {
+  try {
+    const res = await api.vehicles.list(orgId ? { orgId, size: 200 } : { size: 200 })
+    let list = ((res.data ?? []) as unknown) as Vehicle[]
+    if (orgId) list = list.filter((v) => (v as any).org_id === orgId)
+    return list.filter((v) => (v as any).is_active !== false)
+  } catch {
+    return []
+  }
 }

@@ -1,5 +1,9 @@
-import { checkpoints, drivers, delivery_tours } from '@lpg/mock-data'
-import type { Checkpoint, DeliveryTour } from '@lpg/types'
+﻿import {
+  checkpoints as defaultCheckpoints,
+  drivers as defaultDrivers,
+  delivery_tours as defaultTours,
+} from '@/lib/entity-data'
+import type { Checkpoint, DeliveryTour, Driver } from '@lpg/types'
 
 export interface DriverPerformanceView {
   driverId: string
@@ -12,12 +16,7 @@ export interface DriverPerformanceView {
   totalCheckpoints: number
 }
 
-const DRIVER_NAME_BY_ID: Record<string, string> = Object.fromEntries(
-  (drivers as { id: string; first_name: string; last_name: string }[]).map((d) => [
-    d.id,
-    `${d.first_name} ${d.last_name}`.trim(),
-  ]),
-)
+type DriverRow = Pick<Driver, 'id' | 'first_name' | 'last_name'>
 
 const NAME_BY_PLACEHOLDER: Record<string, string> = {
   'driver-0003-youssouf-hamadou': 'Youssouf Hamadou',
@@ -27,16 +26,25 @@ const NAME_BY_PLACEHOLDER: Record<string, string> = {
   'driver-0006-robert-tchakounte': 'Robert Tchakounté',
 }
 
-function driverName(id: string): string {
-  return DRIVER_NAME_BY_ID[id] ?? NAME_BY_PLACEHOLDER[id] ?? id
+function driverName(id: string, nameById: Record<string, string>): string {
+  return nameById[id] ?? NAME_BY_PLACEHOLDER[id] ?? id
 }
 
 function pct(done: number, total: number): number {
   return total > 0 ? Math.round((done / total) * 100) : 0
 }
 
-export function getDriverPerformance(): DriverPerformanceView[] {
-  const tours = delivery_tours as DeliveryTour[]
+export function getDriverPerformance(
+  tours: DeliveryTour[] = defaultTours as DeliveryTour[],
+  checkpoints: Checkpoint[] = defaultCheckpoints as Checkpoint[],
+  drivers: DriverRow[] = defaultDrivers as DriverRow[],
+): DriverPerformanceView[] {
+  const nameById: Record<string, string> = Object.fromEntries(
+    (drivers as { id: string; first_name: string; last_name: string }[]).map((d) => [
+      d.id,
+      `${d.first_name} ${d.last_name}`.trim(),
+    ]),
+  )
   const driverTours = tours.filter((t) => t.driver_id)
   const driverIds = Array.from(new Set(driverTours.map((t) => t.driver_id!)))
   const cpByTour = new Map<string, Checkpoint[]>()
@@ -46,39 +54,45 @@ export function getDriverPerformance(): DriverPerformanceView[] {
     cpByTour.set(cp.tournee_id, list)
   }
 
-  return driverIds.map((driverId) => {
-    const driverTours = toursForDriver(driverId, tours)
-    const totalCheckpoints = driverTours.reduce(
-      (acc, t) => acc + (cpByTour.get(t.id)?.length ?? 0),
-      0,
-    )
-    const missed = driverTours.reduce(
-      (acc, t) =>
-        acc +
-        (cpByTour.get(t.id)?.filter((c) => c.status === 'SKIPPED').length ?? 0),
-      0,
-    )
-    const completed = driverTours.filter((t) => t.status === 'CLOSED').length
-    const inFlight = driverTours.filter((t) => t.status !== 'CLOSED').length
-    return {
-      driverId,
-      driverName: driverName(driverId),
-      totalTours: driverTours.length,
-      completed,
-      inFlight,
-      completionRate: pct(completed, driverTours.length),
-      missedCheckpoints: missed,
-      totalCheckpoints,
-    }
-  }).sort((a, b) => b.completionRate - a.completionRate)
+  return driverIds
+    .map((driverId) => {
+      const toursOfDriver = toursForDriver(driverId, tours)
+      const totalCheckpoints = toursOfDriver.reduce(
+        (acc, t) => acc + (cpByTour.get(t.id)?.length ?? 0),
+        0,
+      )
+      const missed = toursOfDriver.reduce(
+        (acc, t) =>
+          acc +
+          (cpByTour.get(t.id)?.filter((c) => c.status === 'SKIPPED').length ?? 0),
+        0,
+      )
+      const completed = toursOfDriver.filter((t) => t.status === 'CLOSED').length
+      const inFlight = toursOfDriver.filter((t) => t.status !== 'CLOSED').length
+      return {
+        driverId,
+        driverName: driverName(driverId, nameById),
+        totalTours: toursOfDriver.length,
+        completed,
+        inFlight,
+        completionRate: pct(completed, toursOfDriver.length),
+        missedCheckpoints: missed,
+        totalCheckpoints,
+      }
+    })
+    .sort((a, b) => b.completionRate - a.completionRate)
 }
 
 function toursForDriver(driverId: string, tours: DeliveryTour[]): DeliveryTour[] {
   return tours.filter((t) => t.driver_id === driverId)
 }
 
-export function getPerformanceSummary() {
-  const rows = getDriverPerformance()
+export function getPerformanceSummary(
+  tours: DeliveryTour[] = defaultTours as DeliveryTour[],
+  checkpoints: Checkpoint[] = defaultCheckpoints as Checkpoint[],
+  drivers: DriverRow[] = defaultDrivers as DriverRow[],
+) {
+  const rows = getDriverPerformance(tours, checkpoints, drivers)
   const avgCompletion = pct(
     rows.reduce((acc, r) => acc + r.completed, 0),
     rows.reduce((acc, r) => acc + r.totalTours, 0),

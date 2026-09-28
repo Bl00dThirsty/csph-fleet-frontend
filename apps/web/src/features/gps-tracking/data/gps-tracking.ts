@@ -1,5 +1,9 @@
-import { devices, organizations, vehicles } from '@lpg/mock-data'
-import type { Device } from '@lpg/types'
+﻿import {
+  devices as defaultDevices,
+  organizations as defaultOrganizations,
+  vehicles as defaultVehicles,
+} from '@/lib/entity-data'
+import type { Device, Organization, Vehicle } from '@lpg/types'
 
 export interface GpsTrackView {
   id: string
@@ -13,10 +17,14 @@ export interface GpsTrackView {
   lng: string
 }
 
-const orgById = new Map(organizations.map((o) => [o.id, o.name]))
-const vehicleById = new Map(vehicles.map((v) => [v.id, v.license_plate]))
+export function getGpsTracks(
+  devices: Device[] = defaultDevices as Device[],
+  vehicles: Vehicle[] = defaultVehicles as Vehicle[],
+  organizations: Organization[] = defaultOrganizations as Organization[],
+): GpsTrackView[] {
+  const orgById = new Map(organizations.map((o) => [o.id, o.name]))
+  const vehicleById = new Map(vehicles.map((v) => [v.id, v.license_plate]))
 
-export function getGpsTracks(): GpsTrackView[] {
   return (devices as Device[])
     .filter((d) => d.device_type === 'GPS')
     .map((d) => {
@@ -36,8 +44,12 @@ export function getGpsTracks(): GpsTrackView[] {
     })
 }
 
-export function getGpsTrackSummary() {
-  const tracks = getGpsTracks()
+export function getGpsTrackSummary(
+  devices: Device[] = defaultDevices as Device[],
+  vehicles: Vehicle[] = defaultVehicles as Vehicle[],
+  organizations: Organization[] = defaultOrganizations as Organization[],
+) {
+  const tracks = getGpsTracks(devices, vehicles, organizations)
   return {
     total: tracks.length,
     located: tracks.filter((t) => t.position).length,

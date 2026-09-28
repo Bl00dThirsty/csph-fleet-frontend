@@ -1,5 +1,5 @@
-import { client_sites as mockClientSites, organizations } from '@lpg/mock-data'
-import type { ClientSite } from '@lpg/types'
+﻿import { client_sites as defaultClientSites, organizations as defaultOrganizations } from '@/lib/entity-data'
+import type { ClientSite, Organization } from '@lpg/types'
 
 export interface VisitView {
   id: string
@@ -11,14 +11,19 @@ export interface VisitView {
   verifiedAt: string | null
 }
 
-const ORG_NAME_BY_ID: Record<string, string> = Object.fromEntries(
-  (organizations as { id: string; name: string }[]).map((o) => [o.id, o.name]),
-)
-
-export function getVisits(): VisitView[] {
-  return (mockClientSites as ClientSite[]).map((site) => ({
+export function getVisits(
+  sites: ClientSite[] = defaultClientSites as ClientSite[],
+  orgs: Pick<Organization, 'id' | 'name'>[] = defaultOrganizations as Pick<
+    Organization,
+    'id' | 'name'
+  >[],
+): VisitView[] {
+  const orgNameById: Record<string, string> = Object.fromEntries(
+    orgs.map((o) => [o.id, o.name]),
+  )
+  return sites.map((site) => ({
     id: site.id,
-    clientName: ORG_NAME_BY_ID[site.client_org_id] ?? site.client_org_id,
+    clientName: orgNameById[site.client_org_id] ?? site.client_org_id,
     siteName: site.name,
     region: site.region,
     status: site.is_verified ? 'VERIFIE' : 'PENDING',
@@ -27,8 +32,11 @@ export function getVisits(): VisitView[] {
   }))
 }
 
-export function getVisitSummary() {
-  const rows = getVisits()
+export function getVisitSummary(
+  sites?: ClientSite[],
+  orgs?: Pick<Organization, 'id' | 'name'>[],
+) {
+  const rows = getVisits(sites, orgs)
   return {
     total: rows.length,
     verified: rows.filter((r) => r.status === 'VERIFIE').length,
@@ -36,8 +44,11 @@ export function getVisitSummary() {
   }
 }
 
-export function getVisitsByRegion(): Record<string, number> {
-  const rows = getVisits()
+export function getVisitsByRegion(
+  sites?: ClientSite[],
+  orgs?: Pick<Organization, 'id' | 'name'>[],
+): Record<string, number> {
+  const rows = getVisits(sites, orgs)
   const byRegion: Record<string, number> = {}
   for (const row of rows) {
     byRegion[row.region] = (byRegion[row.region] ?? 0) + 1

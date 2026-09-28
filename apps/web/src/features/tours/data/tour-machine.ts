@@ -1,5 +1,4 @@
-import type { DeliveryTour, Setting, TourneeStatus, ExecutionMode } from '@lpg/types'
-import { curated } from '@lpg/mock-data'
+import type { DeliveryTour, Setting, TourneeStatus, ExecutionMode, Vehicle } from '@lpg/types'
 
 export type TourAction =
   | 'send-to-transporter'
@@ -106,13 +105,13 @@ export interface TourValidationResult {
 
 export function validateTour(
   tour: DeliveryTour,
-  options?: { now?: Date; vehicles?: typeof curated.vehicles },
+  options?: { now?: Date; vehicles?: Vehicle[] },
 ): TourValidationResult {
   const errors: string[] = []
   const { execution_mode, vehicle_id, driver_id, livreur_user_id, assigned_by_transporter_user_id,
     transporter_org_id, started_at, closed_at } = tour
   const now = options?.now ?? new Date()
-  const vehicles = options?.vehicles ?? curated.vehicles
+  const vehicles = options?.vehicles ?? []
 
   if (
     execution_mode === 'INTERNAL' &&
@@ -137,7 +136,7 @@ export function validateTour(
     errors.push(`chk_tournee_dates: closed_at must not precede started_at`)
   }
 
-  if (tour.type === 'VRAC' && tour.vehicle_id) {
+  if (tour.type === 'VRAC' && tour.vehicle_id && vehicles.length > 0) {
     const vehicle = vehicles.find((v) => v.id === tour.vehicle_id)
     if (!vehicle) {
       errors.push(`chk_certificat_vrac: VRAC vehicle ${tour.vehicle_id} introuvable`)

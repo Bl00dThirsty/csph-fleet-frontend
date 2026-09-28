@@ -1,4 +1,4 @@
-import { deviceStats, getSettingNumber } from '@lpg/mock-data'
+﻿import { getSettingNumber } from '@/lib/entity-data'
 import { type DeviceType, type DeviceStatus } from '@lpg/types'
 
 export type { DeviceType, DeviceStatus }
@@ -20,33 +20,25 @@ export const deviceHealthTypeLabels: Record<DeviceType, string> = {
   RFIDREADER: 'Lecteur RFID',
 }
 
+/**
+ * device-health â€” stubbed. Live rows arrive via api.devices.list(). Until
+ * that store hydrates, `getDeviceHealth()` returns an empty list and the
+ * page shows a "no attention devices" message.
+ */
 export function getDeviceHealth(): DeviceHealthView[] {
-  const stats = deviceStats()
-  return stats.attention.map((device) => ({
-    id: device.id,
-    serial: device.serial,
-    type: device.type as DeviceType,
-    typeLabel: deviceHealthTypeLabels[device.type as DeviceType] ?? device.type,
-    status: 'OFFLINE',
-    issue: device.issue,
-    battery: device.battery,
-    lastSync: device.lastSync,
-  }))
+  return []
 }
 
 export function getDeviceHealthSummary() {
-  const stats = deviceStats()
-  const attention = getDeviceHealth()
-  const batteryCriticalThreshold =
-    getSettingNumber('device.battery_critical_threshold') ?? 15
-  const batteryCritical = attention.filter(
-    (d) => (d.battery ?? 0) <= batteryCriticalThreshold
-  ).length
+  // batteryCriticalThreshold is no longer used here â€” kept as a no-op until
+  // live device rows arrive and the real threshold is consulted per-device.
+  const _threshold = getSettingNumber('device.battery_critical_threshold')
+  void _threshold
   return {
-    total: stats.total,
-    attention: attention.length,
-    offline: attention.filter((d) => d.issue === 'OFFLINE').length,
-    batteryCritical,
-    operational: stats.total - attention.length,
+    total: 0,
+    attention: 0,
+    offline: 0,
+    batteryCritical: 0,
+    operational: 0,
   }
 }

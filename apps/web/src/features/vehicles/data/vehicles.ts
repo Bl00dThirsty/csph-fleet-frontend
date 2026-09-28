@@ -1,10 +1,10 @@
-import {
+﻿import {
   delivery_tours,
   drivers,
   organizations,
   risk_scores,
   vehicles,
-} from '@lpg/mock-data'
+} from '@/lib/entity-data'
 import type {
   DeliveryTour,
   Driver,
@@ -179,7 +179,7 @@ function assignedDriverFor(
   const orgDriver = drivers.find(
     (driver) => driver.org_id === vehicle.org_id && driver.is_active,
   )
-  return driverName(orgDriver) ?? '—'
+  return driverName(orgDriver) ?? 'â€”'
 }
 
 function riskLevelFor(vehicleId: string, fallback: RiskLevel): RiskLevel {
@@ -208,7 +208,7 @@ function buildView(vehicle: CuratedVehicle): VehicleView {
     license_plate: vehicle.license_plate,
     type: vehicle.type,
     org_id: vehicle.org_id,
-    tenant_name: org?.name ?? '—',
+    tenant_name: org?.name ?? 'â€”',
     tenant_type: org?.type ?? 'TRANSPORTEUR',
     region,
     certificate_number: vehicle.certificate_number,

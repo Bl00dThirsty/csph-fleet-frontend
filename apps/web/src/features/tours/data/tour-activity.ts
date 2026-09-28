@@ -1,27 +1,47 @@
-import {
-  anomalies,
-  checkpoints,
-  client_sites,
-  curated,
-  delivery_tours,
-  drivers,
-  organizations,
-  scan_events,
-  users,
-  vehicles,
-} from '@lpg/mock-data'
 import type {
   Anomaly,
   Checkpoint,
+  CheckpointStatus,
+  ClientSite,
   DeliveryTour,
   ExecutionMode,
+  Organization,
+  ScanEvent,
   Setting,
   TourneeStatus,
   TourneeType,
+  Vehicle,
 } from '@lpg/types'
 import { sites, type Site } from '@/features/sites/data/sites'
 import { trucks, type Truck } from '@/features/trucks/data/trucks'
+import {
+  anomalies as defaultAnomalies,
+  checkpoints as defaultCheckpoints,
+  client_sites as defaultClientSites,
+  drivers as defaultDrivers,
+  organizations as defaultOrganizations,
+  scan_events as defaultScanEvents,
+  settings as defaultSettings,
+  users as defaultUsers,
+  vehicles as defaultVehicles,
+} from '@/lib/entity-data'
 import { resolveSlaThresholds, tourSlaFlags } from './tour-machine'
+import { useUsersStore } from '@/store/users-store'
+import { useToursStore } from '@/store/tours-store'
+
+export type { CheckpointStatus }
+
+// Live lookups: every helper below resolves its rows from explicit parameters
+// that default to the `@/lib/entity-data` collections (empty until hydrated).
+// Callers holding fresher rows (e.g. the tours store after fetchCheckpoints)
+// pass them in via TourEnrichOptions — no module-scope shadow collections.
+
+/** Minimal person shape shared by users and drivers lookups. */
+export type TourPerson = {
+  id: string
+  first_name?: string | null
+  last_name?: string | null
+}
 
 export type { ExecutionMode, TourneeStatus }
 
@@ -64,6 +84,8 @@ export type RouteTripStop = {
   windowLabel: string
   deliveredQuantity?: number
   note: string
+  /** Server checkpoint status backing this stop (absent for hand-built rows). */
+  checkpointStatus?: CheckpointStatus
 }
 
 export type RouteTelemetryPoint = {
@@ -98,7 +120,8 @@ export type RouteTripView = RouteTrip & {
   telemetry: RouteTelemetryPoint[]
   events: RouteEvent[]
   latestTelemetry: RouteTelemetryPoint
-  nextStop: RouteTripViewStop
+  /** First non-terminal stop, or the last stop, or null when no stops exist. */
+  nextStop: RouteTripViewStop | null
   deliveredPercent: number
   remainingPercent: number
   lpgDropPercent: number
@@ -164,9 +187,8 @@ export const routeAttentionOptions = [
   value: RouteEventSeverity
 }>
 
-const allSites: Site[] = [
-  ...sites,
-  ...client_sites.map((cs) => ({
+function clientSiteToSite(cs: ClientSite): Site {
+  return {
     id: cs.id,
     name: cs.name,
     type: 'delivery-point' as const,
@@ -177,16 +199,34 @@ const allSites: Site[] = [
     longitude: Array.isArray(cs.geo_point) ? cs.geo_point[1] ?? 9.76 : 9.76,
     description: cs.address || '',
     status: 'active' as const,
-  })),
-]
+  }
+}
 
-const siteById = new Map(allSites.map((site) => [site.id, site]))
-const truckById = new Map(trucks.map((truck) => [truck.id, truck]))
-const driverById = new Map(drivers.map((driver) => [driver.id, driver]))
+function buildSiteIndex(
+  siteRows: Site[] = sites,
+  clientSiteRows: ClientSite[] = defaultClientSites,
+): Map<string, Site> {
+  const index = new Map<string, Site>()
+  for (const site of siteRows) index.set(site.id, site)
+  for (const cs of clientSiteRows) {
+    if (!index.has(cs.id)) index.set(cs.id, clientSiteToSite(cs))
+  }
+  return index
+}
 
-function requireSite(siteId: string): Site {
+// `trucks` lives behind an import cycle: this module <- tours-store, and
+// trucks/data/trucks imports tours-store back. Building the index at module scope
+// reads `trucks` while it is still uninitialised, which is `undefined` outside a
+// browser bundle and crashes the map suites on import. Build it on first use.
+let truckIndex: Map<string, Truck> | null = null
+function truckById(): Map<string, Truck> {
+  truckIndex ??= new Map(trucks.map((truck) => [truck.id, truck]))
+  return truckIndex
+}
+
+function requireSite(siteId: string, index: Map<string, Site>): Site {
   if (!siteId) return placeholderSite()
-  const site = siteById.get(siteId)
+  const site = index.get(siteId)
   if (site) return site
   return {
     id: siteId,
@@ -219,7 +259,7 @@ function placeholderSite(): Site {
 
 function requireTruck(truckId: string): Truck {
   if (!truckId) return trucks[0]!
-  const truck = truckById.get(truckId)
+  const truck = truckById().get(truckId)
   if (truck) return truck
   return (
     trucks[0] ?? {
@@ -252,11 +292,16 @@ export function routeStatusFromTournee(status: TourneeStatus): RouteTripStatus {
   }
 }
 
-function driverName(driverId: string | null | undefined): string {
+function driverName(
+  driverId: string | null | undefined,
+  drivers: TourPerson[] = defaultDrivers,
+): string {
   if (!driverId) return '—'
-  const driver = driverById.get(driverId)
+  const live = useUsersStore.getState().users.find((u) => u.id === driverId)
+  if (live) return `${live.first_name ?? ''} ${live.last_name ?? ''}`.trim() || '—'
+  const driver = drivers.find((d) => d.id === driverId)
   if (!driver) return '—'
-  return `${driver.first_name} ${driver.last_name}`.trim()
+  return `${driver.first_name ?? ''} ${driver.last_name ?? ''}`.trim() || '—'
 }
 
 export type TourSlice =
@@ -289,10 +334,23 @@ export type TourActivity = RouteTripView & {
 }
 
 export interface TourEnrichOptions {
-  checkpoints?: typeof curated.checkpoints
+  checkpoints?: Checkpoint[]
   anomalies?: Anomaly[]
   settings?: Setting[]
+  organizations?: Organization[]
+  vehicles?: Vehicle[]
+  clientSites?: ClientSite[]
+  drivers?: TourPerson[]
+  scanEvents?: ScanEvent[]
+  users?: TourPerson[]
   now?: Date
+}
+
+export const checkpointStatusLabels: Record<CheckpointStatus, string> = {
+  PENDING: 'En attente',
+  REACHED: 'Arrivé',
+  COMPLETED: 'Terminé',
+  SKIPPED: 'Sauté',
 }
 
 export const tourneeTypeLabels: Record<TourneeType, string> = {
@@ -324,32 +382,54 @@ export const executionModeOptions: readonly { label: string; value: ExecutionMod
   Object.keys(executionModeLabels) as ExecutionMode[]
 ).map((value) => ({ label: executionModeLabels[value], value }))
 
-function orgName(id: string | null | undefined): string | null {
+function orgName(
+  id: string | null | undefined,
+  orgs: Organization[] = defaultOrganizations,
+): string | null {
   if (!id) return null
-  return organizations.find((o) => o.id === id)?.name ?? id
+  return orgs.find((o) => o.id === id)?.name ?? id
 }
 
-function personName(id: string | null | undefined): string | null {
+function personName(
+  id: string | null | undefined,
+  users: TourPerson[] = defaultUsers,
+  drivers: TourPerson[] = defaultDrivers,
+): string | null {
   if (!id) return null
+  // Live users are fetched into users-store; this lookup is the production path.
+  const live = useUsersStore.getState().users.find((u) => u.id === id)
+  if (live) return `${live.first_name ?? ''} ${live.last_name ?? ''}`.trim() || id
   const user = users.find((u) => u.id === id)
-  if (user) return `${user.first_name} ${user.last_name}`.trim()
+  if (user) return `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || id
   const driver = drivers.find((d) => d.id === id)
-  if (driver) return `${driver.first_name} ${driver.last_name}`.trim()
+  if (driver) return `${driver.first_name ?? ''} ${driver.last_name ?? ''}`.trim() || id
   return id
 }
 
-function vehiclePlate(id: string | null | undefined): string | null {
+function vehiclePlate(
+  id: string | null | undefined,
+  rows: Vehicle[] = defaultVehicles,
+): string | null {
   if (!id) return null
-  return vehicles.find((v) => v.id === id)?.license_plate ?? id
+  return rows.find((v) => v.id === id)?.license_plate ?? id
 }
 
-function siteName(id: string | null | undefined): string | null {
+function siteName(
+  id: string | null | undefined,
+  siteRows: Site[] = sites,
+  clientSiteRows: ClientSite[] = defaultClientSites,
+): string | null {
   if (!id) return null
-  return [...sites, ...client_sites].find((s) => s.id === id)?.name ?? id
+  return (
+    siteRows.find((s) => s.id === id)?.name ??
+    clientSiteRows.find((s) => s.id === id)?.name ??
+    id
+  )
 }
 
-function tourReference(index: number): string {
-  return `TRP-${2401 + index}`
+function tourReference(tour: DeliveryTour): string {
+  // Never invent a reference: unknown renders as an em dash.
+  return tour.tour_code ?? '—'
 }
 
 function windowLabel(dateIso: string | null | undefined): string {
@@ -403,6 +483,7 @@ function buildStops(
       windowLabel: windowLabel(checkpoint.expected_arrival),
       deliveredQuantity: isLast ? (tour.delivered_quantity ?? 0) : undefined,
       note: stopNote(checkpoint),
+      checkpointStatus: checkpoint.status,
     }
   })
 }
@@ -417,17 +498,18 @@ function buildTelemetry(
   tourCheckpoints: Checkpoint[],
   origin: Site,
   destination: Site,
+  scans: ScanEvent[] = defaultScanEvents,
 ): RouteTelemetryPoint[] {
-  const scans = scan_events.filter((scan) =>
+  const tourScans = scans.filter((scan) =>
     tourCheckpoints.some(
       (checkpoint) => checkpoint.id === scan.checkpoint_id,
     ),
   )
 
-  if (scans.length > 0) {
-    return scans.map((scan, index) => {
+  if (tourScans.length > 0) {
+    return tourScans.map((scan, index) => {
       const [lng, lat] = scan.geo_point ?? [0, 0]
-      const total = scans.length
+      const total = tourScans.length
       const loaded = tour.loaded_quantity ?? tour.requested_quantity ?? 0
       const delivered = tour.delivered_quantity ?? 0
       const level = Math.max(
@@ -481,12 +563,16 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10
 }
 
-function fallbackTruckId(marketeurOrgId: string | null | undefined, tourType: string): string {
-  const candidates = vehicles.filter(
+function fallbackTruckId(
+  marketeurOrgId: string | null | undefined,
+  tourType: string,
+  rows: Vehicle[] = defaultVehicles,
+): string {
+  const candidates = rows.filter(
     (v) => v.org_id === marketeurOrgId && v.type === tourType && v.is_active,
   )
   if (candidates.length > 0) return candidates[0]!.id
-  const any = vehicles.find((v) => v.type === tourType && v.is_active)
+  const any = rows.find((v) => v.type === tourType && v.is_active)
   return any?.id ?? trucks[0]?.id ?? ''
 }
 
@@ -495,13 +581,14 @@ function buildEvents(
   tour: DeliveryTour,
   tourCheckpoints: Checkpoint[],
   status: RouteTripStatus,
+  seeded: Anomaly[] = defaultAnomalies,
 ): RouteEvent[] {
-  const seeded = anomalies.filter(
+  const tourAnomalies = seeded.filter(
     (anomaly) =>
       anomaly.entity_type === 'TOURNEE' && anomaly.entity_id === tourId,
   )
 
-  const mapped = seeded.map((anomaly) =>
+  const mapped = tourAnomalies.map((anomaly) =>
     anomalyToEvent(tourId, anomaly),
   )
 
@@ -664,31 +751,41 @@ export function normalizeTour(raw: any): DeliveryTour {
   }
 }
 
-function buildView(tourRaw: DeliveryTour, index: number, checkpointsSource?: typeof checkpoints): TourActivity {
+function buildView(tourRaw: DeliveryTour, opts: TourEnrichOptions = {}): TourActivity {
   const tour = normalizeTour(tourRaw)
-  const tourCheckpoints = (checkpointsSource ?? checkpoints).filter(
-    (checkpoint) => checkpoint.tournee_id === tour.id,
+  const checkpointRows = opts.checkpoints ?? defaultCheckpoints
+  const anomalyRows = opts.anomalies ?? defaultAnomalies
+  const settingRows = opts.settings ?? defaultSettings
+  const orgRows = opts.organizations ?? defaultOrganizations
+  const vehicleRows = opts.vehicles ?? defaultVehicles
+  const clientSiteRows = opts.clientSites ?? defaultClientSites
+  const driverRows = opts.drivers ?? defaultDrivers
+  const scanRows = opts.scanEvents ?? defaultScanEvents
+  const userRows = opts.users ?? defaultUsers
+  const siteIndex = buildSiteIndex(sites, clientSiteRows)
+  const tourCheckpoints = checkpointRows.filter(
+    (checkpoint) => checkpoint.tournee_id === tour.id || checkpoint.tour_id === tour.id,
   )
   const stops = buildStops(tourCheckpoints, tour)
   const originSiteId = stops[0]?.siteId ?? ''
-  const destinationSiteId = stops[stops.length - 1]?.siteId ?? ''
-  const originSite = originSiteId ? requireSite(originSiteId) : placeholderSite()
+  const destinationSiteId = stops.length > 0 ? (stops[stops.length - 1]?.siteId ?? '') : ''
+  const originSite = originSiteId ? requireSite(originSiteId, siteIndex) : placeholderSite()
   const destinationSite = destinationSiteId
-    ? requireSite(destinationSiteId)
+    ? requireSite(destinationSiteId, siteIndex)
     : placeholderSite()
   const status = routeStatusFromTournee(tour.status)
   const loaded = tour.loaded_quantity ?? tour.requested_quantity ?? 0
   const delivered = tour.delivered_quantity ?? (status === 'completed' ? loaded : 0)
   const remaining = Math.max(loaded - delivered, 0)
-  const truckId = tour.vehicle_id ?? fallbackTruckId(tour.marketeur_org_id, tour.type)
+  const truckId = tour.vehicle_id ?? fallbackTruckId(tour.marketeur_org_id, tour.type, vehicleRows)
   const truck = requireTruck(truckId)
   const expectedArrivalAt =
-    stops[stops.length - 1]?.windowLabel ??
+    (stops.length > 0 ? stops[stops.length - 1]?.windowLabel : undefined) ??
     tour.closed_at ??
     tour.updated_at ??
     ''
 
-  const telemetry = buildTelemetry(tour.id, tour, tourCheckpoints, originSite, destinationSite)
+  const telemetry = buildTelemetry(tour.id, tour, tourCheckpoints, originSite, destinationSite, scanRows)
   const latestTelemetry = telemetry[telemetry.length - 1] ?? {
     id: `${tour.id}-fallback`,
     routeTripId: tour.id,
@@ -700,20 +797,20 @@ function buildView(tourRaw: DeliveryTour, index: number, checkpointsSource?: typ
     estimatedVolume: remaining,
   }
   const firstTelemetry = telemetry[0] ?? latestTelemetry
-  const events = buildEvents(tour.id, tour, tourCheckpoints, status)
+  const events = buildEvents(tour.id, tour, tourCheckpoints, status, anomalyRows)
   const deliveredPercent = Math.round((delivered / (loaded || 1)) * 100)
   const remainingPercent = Math.round((remaining / (loaded || 1)) * 100)
   const unaccounted = Math.max(loaded - delivered - remaining, 0)
 
-  const stopViews = stops.map((stop) => ({ ...stop, site: requireSite(stop.siteId) }))
-  const nextStop = stopViews.find((stop) => !stop.completed) ?? stopViews[stopViews.length - 1]!
+  const stopViews = stops.map((stop) => ({ ...stop, site: requireSite(stop.siteId, siteIndex) }))
+  const nextStop = stopViews.find((stop) => !stop.completed) ?? (stopViews.length > 0 ? stopViews[stopViews.length - 1] : undefined) ?? null
 
   return {
     id: tour.id,
-    reference: tourReference(index),
+    reference: tourReference(tour),
     truckId,
     customerName: destinationSite.name,
-    missionLead: driverName(tour.driver_id),
+    missionLead: driverName(tour.driver_id, driverRows),
     originSiteId,
     destinationSiteId,
     startedAt: tour.started_at ?? tour.created_at ?? '',
@@ -753,11 +850,11 @@ function buildView(tourRaw: DeliveryTour, index: number, checkpointsSource?: typ
     tourneeStatus: tour.status,
     tourneeType: tour.type,
     execution_mode: tour.execution_mode,
-    marketeur_name: orgName(tour.marketeur_org_id) ?? 'SCTM',
-    transporter_name: orgName(tour.transporter_org_id),
-    vehicle_plate: vehiclePlate(tour.vehicle_id),
-    driver_name: personName(tour.driver_id),
-    livreur_name: personName(tour.livreur_user_id),
+    marketeur_name: orgName(tour.marketeur_org_id, orgRows) ?? 'SCTM',
+    transporter_name: orgName(tour.transporter_org_id, orgRows),
+    vehicle_plate: vehiclePlate(tour.vehicle_id, vehicleRows),
+    driver_name: personName(tour.driver_id, userRows, driverRows),
+    livreur_name: personName(tour.livreur_user_id, userRows, driverRows),
     requested_quantity: tour.requested_quantity,
     loaded_quantity: tour.loaded_quantity ?? null,
     delivered_quantity: tour.delivered_quantity ?? null,
@@ -765,9 +862,9 @@ function buildView(tourRaw: DeliveryTour, index: number, checkpointsSource?: typ
     completed_checkpoints: tourCheckpoints.filter((cp) => cp.status === 'COMPLETED').length,
     created_at: tour.created_at ?? '',
     transport_assigned_at: tour.transporter_assigned_at ?? null,
-    sla_transporter_no_ack: tourSlaFlags(tour, resolveSlaThresholds(curated.settings)).transporterNoAck,
-    sla_unassigned_too_long: tourSlaFlags(tour, resolveSlaThresholds(curated.settings)).unassignedTooLong,
-    anomaly_ids: curated.anomalies
+    sla_transporter_no_ack: tourSlaFlags(tour, resolveSlaThresholds(settingRows)).transporterNoAck,
+    sla_unassigned_too_long: tourSlaFlags(tour, resolveSlaThresholds(settingRows)).unassignedTooLong,
+    anomaly_ids: anomalyRows
       .filter(
         (a) =>
           a.entity_type === 'TOURNEE' &&
@@ -806,42 +903,46 @@ function slicePredicate(slice: TourSlice): (tour: DeliveryTour) => boolean {
   }
 }
 
-export function getTourActivity(slice: TourSlice = 'ALL'): TourActivity[] {
-  return delivery_tours
+export function getTourActivity(slice: TourSlice = 'ALL', opts: TourEnrichOptions = {}): TourActivity[] {
+  const tours = useToursStore.getState().tours
+  const checkpoints = opts.checkpoints ?? useToursStore.getState().checkpoints
+  return tours
     .filter(slicePredicate(slice))
-    .map((tour, index) => buildView(tour, index))
+    .map((tour) => buildView(tour, { ...opts, checkpoints }))
 }
 
-export function getTourActivityById(id: string): TourActivity | undefined {
-  const index = delivery_tours.findIndex((tour) => tour.id === id)
-  if (index === -1) return undefined
-  return buildView(delivery_tours[index]!, index)
+export function getTourActivityById(id: string, opts: TourEnrichOptions = {}): TourActivity | undefined {
+  const tours = useToursStore.getState().tours
+  const tour = tours.find((t) => t.id === id)
+  if (!tour) return undefined
+  const checkpoints = opts.checkpoints ?? useToursStore.getState().checkpoints
+  return buildView(tour, { ...opts, checkpoints })
 }
 
 export function toTourActivities(
   tours: readonly DeliveryTour[],
   opts: TourEnrichOptions = {},
 ): TourActivity[] {
-  return tours.map((tour, index) => buildView(tour, index, opts.checkpoints))
+  return tours.map((tour) => buildView(tour, opts))
 }
 
 export function buildTourActivity(
   tour: DeliveryTour,
-  index: number,
+  _index: number,
   opts: TourEnrichOptions = {},
 ): TourActivity {
-  return buildView(tour, index, opts.checkpoints)
+  return buildView(tour, opts)
 }
 
 export const getRouteTripsView = getTourActivity
 export const buildTourSummary = buildRouteSummary
 export const getTourCustomerOptions = getRouteCustomerOptions
 
-export function getTourStops(id: string): string[] {
-  const tour = delivery_tours.find((t) => t.id === id)
+export function getTourStops(id: string, checkpoints: Checkpoint[] = defaultCheckpoints): string[] {
+  const tour = useToursStore.getState().tours.find((t) => t.id === id)
   if (!tour) return []
   return checkpoints
-    .filter((cp) => cp.tournee_id === tour.id)
+    .filter((cp) => cp.tournee_id === tour.id || cp.tour_id === tour.id)
     .sort((a, b) => a.sequence - b.sequence)
     .map((cp) => siteName(cp.site_id ?? cp.client_site_id))
     .filter((name): name is string => Boolean(name))
@@ -944,7 +1045,7 @@ export function buildRouteLpgVariation(
   const loading = trip.loadedQuantity
   const live = trip.latestTelemetry.estimatedVolume
   const nextDrop =
-    trip.status === 'completed' ? 0 : (trip.nextStop.deliveredQuantity ?? 0)
+    trip.status === 'completed' ? 0 : (trip.nextStop?.deliveredQuantity ?? 0)
   const projected =
     trip.status === 'completed' ? live : Math.max(live - nextDrop, 0)
 

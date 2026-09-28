@@ -1,6 +1,23 @@
 import type { ApiAdapter, AuthResult, AuthUser, Credentials } from './adapter.ts'
 import { createResourceService } from './resource.ts'
 
+/**
+ * POST /api/v1/scan-events payload. Transcription of the tour-service
+ * CreateScanEventDto: exactly one of direction or meterReading, GPS mandatory.
+ */
+export interface ScanEventPayload {
+  checkpointId: string
+  livreurUserId: string
+  rfidTagId?: string | null
+  direction?: 'IN' | 'OUT' | null
+  geoLng: number
+  geoLat: number
+  meterReading?: number | null
+  photoUrl?: string | null
+  pdaSyncId?: string | null
+  timestamp?: string | null
+}
+
 export function createAuthService(adapter: ApiAdapter) {
   return {
     login(creds: Credentials): Promise<AuthResult> {
@@ -43,6 +60,18 @@ export function createApi(adapter: ApiAdapter) {
     organizations: createResourceService<any>(adapter, 'organizations'),
     users: createResourceService<any>(adapter, 'users'),
     sites: createResourceService<any>(adapter, 'sites'),
+
+    // Users (extended): create-with-auth provisions a login account in the
+    // same atomic operation as the person row. The backend
+    // (csph-fleet-backend/user-service) maps this on
+    // POST /api/v1/users/with-auth and requires CreatePersonWithAuthRequest.
+    usersCreateWithAuth(body: any) {
+      return request<any>('/users/with-auth', {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    },
     clients: createResourceService<any>(adapter, 'clients'),
     clientSites: createResourceService<any>(adapter, 'client-sites'),
     vehicles: createResourceService<any>(adapter, 'vehicles'),
@@ -151,7 +180,12 @@ export function createApi(adapter: ApiAdapter) {
       return request<any>(`/pickups/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'COMPLETED' }), headers: { 'Content-Type': 'application/json' } })
     },
 
-    // Delivery tours (Spring Boot tour-service lifecycle)
+    // Delivery tours (Spring Boot tour-service lifecycle).
+    //
+    // Chain: DRAFT -> PLANNED -> INPROGRESS -> CHECKPOINTACTIVE -> CLOSED
+    // (INTERNAL), with PENDINGTRANSPORTERACK -> ACKNOWLEDGED inserted after
+    // PLANNED for EXTERNAL. Every transition below is a real endpoint; the old
+    // `/validate` fused arrival with completion and is deleted server-side.
     tours: {
       list(page = 0, size = 50) {
         return adapter.requestList<any>(`/tours?page=${page}&size=${size}`)
@@ -163,6 +197,24 @@ export function createApi(adapter: ApiAdapter) {
         return request<any>('/tours', {
           method: 'POST',
           body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      plan(id: string) {
+        return request<any>(`/tours/${id}/plan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      sendToTransporter(id: string) {
+        return request<any>(`/tours/${id}/send-to-transporter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      acknowledge(id: string) {
+        return request<any>(`/tours/${id}/acknowledge`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })
       },
@@ -225,14 +277,25 @@ export function createApi(adapter: ApiAdapter) {
           headers: { 'Content-Type': 'application/json' },
         })
       },
-      validateCheckpoint(checkpointId: string) {
-        return request<any>(`/tours/checkpoints/${checkpointId}/validate`, {
+      // PENDING -> REACHED. Records the arrival instant; the server promotes
+      // the tour to CHECKPOINTACTIVE on first arrival. Bodyless by design.
+      reachCheckpoint(checkpointId: string) {
+        return request<any>(`/checkpoints/${checkpointId}/reach`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+      // REACHED -> COMPLETED. Bodyless by design. This replaces
+      // validateCheckpoint (`/tours/checkpoints/{id}/validate`), which never
+      // existed server-side and 404'd on every call.
+      completeCheckpoint(checkpointId: string) {
+        return request<any>(`/checkpoints/${checkpointId}/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })
       },
       skipCheckpoint(checkpointId: string, reason: string) {
-        return request<any>(`/tours/checkpoints/${checkpointId}/skip?reason=${encodeURIComponent(reason)}`, {
+        return request<any>(`/checkpoints/${checkpointId}/skip?reason=${encodeURIComponent(reason)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })
@@ -250,20 +313,15 @@ export function createApi(adapter: ApiAdapter) {
       return request<any>(`/tours/${id}/replay`)
     },
 
-    // Checkpoints
-    checkpointReach(id: string, body: { lat: number; lng: number }) {
-      return request<any>(`/tours/checkpoints/${id}/validate`, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
-    },
-    checkpointSkip(id: string, reason: string) {
-      return request<any>(`/tours/checkpoints/${id}/skip?reason=${encodeURIComponent(reason)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-    },
-
-    // Scan events
-    recordScan(body: any) {
+    // Scan events (tour-service; the gateway routes /scan-events/** there, NOT
+    // to cylinder-service). Single create + bulk resync share the
+    // CreateScanEvent shape: exactly one of direction (IN/OUT) or meterReading
+    // (VRAC, >= 0), GPS mandatory, UUIDs as strings.
+    recordScan(body: ScanEventPayload) {
       return request<any>('/scan-events', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
     },
-    bulkScanUpload(body: { scans: any[] }) {
-      return request<any>('/scan-events/bulk', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
+    bulkScanUpload(items: ScanEventPayload[]) {
+      return request<any>('/scan-events/bulk', { method: 'POST', body: JSON.stringify({ items }), headers: { 'Content-Type': 'application/json' } })
     },
 
     // Declarations / reconciliations / redressements

@@ -1,9 +1,9 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type { Vehicle } from '@lpg/types'
 import { saveLink } from '@/lib/save-link'
 
 const VEHICLE_OPTIONS = (curated.vehicles as Vehicle[]).map((v) => ({
-  label: `${v.license_plate} — ${v.id}`,
+  label: `${v.license_plate} â€” ${v.id}`,
   value: v.id,
 }))
 

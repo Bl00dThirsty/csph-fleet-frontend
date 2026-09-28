@@ -1,6 +1,5 @@
-import { curated } from '@lpg/mock-data'
-import type { User as CuratedUser } from '@lpg/types'
 import type { MfaStatus } from '@lpg/types'
+import { useUsersStore } from '@/store/users-store'
 
 export type LivreurStatus = 'ACTIVE' | 'INACTIVE'
 
@@ -16,20 +15,21 @@ export interface LivreurView {
   created_at: string
 }
 
-const ORG_NAME_BY_ID: Record<string, string> = Object.fromEntries(
-  curated.organizations.map((org) => [org.id, org.name]),
-)
-
+/**
+ * Live fetch — pulls every user with role `LIVREUR` from the live users-store
+ * (which is hydrated by api.users.list). The previous curated.* seed has been
+ * removed.
+ */
 export function getLivreurs(): LivreurView[] {
-  const users = curated.users as CuratedUser[]
+  const users = useUsersStore.getState().users
   return users
-    .filter((user) => user.system_role === 'LIVREUR')
+    .filter((user) => user.system_role === 'LIVREUR' || (user as any).role_codes?.includes('LIVREUR'))
     .map((user) => ({
       id: user.id,
       email: user.email,
-      fullName: `${user.first_name} ${user.last_name}`.trim(),
+      fullName: `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim(),
       orgId: user.org_id,
-      orgName: ORG_NAME_BY_ID[user.org_id] ?? '—',
+      orgName: (user as any).org_name ?? user.org_id ?? '—',
       status: user.is_active ? 'ACTIVE' : 'INACTIVE',
       mfaStatus: user.mfa_status ?? 'DISABLED',
       lastLogin: user.last_login_at ?? '—',

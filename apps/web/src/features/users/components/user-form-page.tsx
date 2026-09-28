@@ -44,7 +44,8 @@ import {
   SelectValue,
   Switch,
 } from '@lpg/ui'
-import { curated } from '@lpg/mock-data'
+import { useEffect } from 'react'
+import { api } from '@lpg/api-client'
 import {
   PERMISSION_CATALOG,
   PREDEFINED_PROFILES,
@@ -80,17 +81,45 @@ interface FormState {
   temp_password: string
 }
 
+interface OrganizationOption {
+  id: string
+  name: string
+  type: string
+}
+
 export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
   const navigate = useNavigate()
   const authUser = useAuthStore((s) => s.user)
   const activeRole = useRoleStore((s) => s.activeRole)
   const effectiveRole = activeRole || (authUser?.system_role as Role) || 'SUPERADMIN'
 
+  // Live organizations from the organization-service — replaces the
+  // curated.organizations hard-coded fallback.
+  const [organizationOptions, setOrganizationOptions] = useState<OrganizationOption[]>([])
+  useEffect(() => {
+    let cancelled = false
+    api.organizations
+      .list({ size: 200 })
+      .then((res) => {
+        if (cancelled) return
+        const list = (res.data ?? []) as unknown as OrganizationOption[]
+        setOrganizationOptions(list)
+      })
+      .catch((err: unknown) => {
+        // Surface the error in the form below; don't crash the page.
+        // eslint-disable-next-line no-console
+        console.warn('[UserFormPage] organisations indisponibles', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Is this actor constrained to their own organization?
   const isActorOrganizationLocked =
     effectiveRole === 'MARKETEUR' || effectiveRole === 'TRANSPORTEUR'
 
-  const userOrgId = authUser?.org_id || 'org-0002-sctm-0000-000000000001'
+  const userOrgId = authUser?.org_id || 'CSPH'
 
   const [form, setForm] = useState<FormState>(() => {
     if (initialUser) {
@@ -126,7 +155,7 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
       email: '',
       phone: '',
       job_title: '',
-      org_id: isActorOrganizationLocked ? userOrgId : (curated.organizations[0]?.id || ''),
+      org_id: isActorOrganizationLocked ? userOrgId : '',
       site_id: '',
       system_role: defaultRole,
       selected_profile_id: defaultProfile?.id || 'mkt-lead',
@@ -136,6 +165,9 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
       temp_password: 'Password123!',
     }
   })
+
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // Collapsible accordion state for permission categories
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({
@@ -182,8 +214,8 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
     return PREDEFINED_PROFILES
   }, [effectiveRole])
 
-  // Filter organizations list
-  const organizationOptions = curated.organizations as Array<{ id: string; name: string; type: string }>
+  // Filter organizations list (live `organizationOptions` is loaded in the
+  // effect above; no curated.* fallback).
 
   // Selected organization info
   const currentOrg = useMemo(() => {
@@ -291,19 +323,20 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (submitting) return
 
     if (!form.first_name.trim() || !form.last_name.trim()) {
-      toast.error('Le prénom et le nom de famille sont obligatoires.')
+      setSubmitError('Le prénom et le nom de famille sont obligatoires.')
       return
     }
 
     if (!form.email.trim() || !form.email.includes('@')) {
-      toast.error('Veuillez renseigner une adresse email valide.')
+      setSubmitError('Veuillez renseigner une adresse email valide.')
       return
     }
 
     if (!form.org_id) {
-      toast.error('Une organisation de rattachement est obligatoire.')
+      setSubmitError('Une organisation de rattachement est obligatoire.')
       return
     }
 
@@ -320,15 +353,33 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
       is_active: form.is_active,
     }
 
-    if (mode === 'create') {
-      useUsersStore.getState().createUser(patch as never)
-      toast.success(`Collaborateur ${form.first_name} ${form.last_name} créé avec succès !`)
-    } else {
-      useUsersStore.getState().updateUser(initialUser!.id, patch)
-      toast.success(`Profil de ${form.first_name} ${form.last_name} mis à jour avec succès !`)
-    }
-
-    navigate({ to: '/users' })
+    setSubmitting(true)
+    setSubmitError(null)
+    ;(async () => {
+      try {
+        if (mode === 'create') {
+          // Generate a username from email + a default password for first-time
+          // login. The user-service /users/with-auth endpoint requires both.
+          const username = patch.email.split('@')[0]?.replace(/[^a-zA-Z0-9._-]/g, '') || `${patch.first_name}.${patch.last_name}`.toLowerCase()
+          const password = form.temp_password || 'Password123!'
+          await useUsersStore.getState().createUser({
+            ...patch,
+            username,
+            password,
+          } as never)
+          toast.success(`Collaborateur ${patch.first_name} ${patch.last_name} créé en base avec succès !`)
+        } else {
+          await useUsersStore.getState().updateUser(initialUser!.id, patch)
+          toast.success(`Profil de ${patch.first_name} ${patch.last_name} mis à jour en base avec succès !`)
+        }
+        navigate({ to: '/users' })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Erreur réseau — création non confirmée.'
+        setSubmitError(message)
+      } finally {
+        setSubmitting(false)
+      }
+    })()
   }
 
   return (
@@ -367,15 +418,30 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
           <Button
             variant='ghost'
             onClick={() => navigate({ to: '/users' })}
+            disabled={submitting}
           >
             Annuler
           </Button>
-          <Button onClick={handleSubmit} className='flex items-center gap-2 shadow-sm'>
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className='flex items-center gap-2 shadow-sm'
+          >
             <Save className='h-4 w-4' />
-            {mode === 'create' ? 'Créer l’utilisateur' : 'Enregistrer les modifications'}
+            {submitting
+              ? 'Envoi…'
+              : mode === 'create'
+                ? 'Créer l’utilisateur'
+                : 'Enregistrer les modifications'}
           </Button>
         </div>
       </div>
+
+      {submitError && (
+        <div className='rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300'>
+          {submitError}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className='space-y-6'>
         {/* Section 1 : Identité & Contact */}
@@ -839,12 +905,17 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
             type='button'
             variant='outline'
             onClick={() => navigate({ to: '/users' })}
+            disabled={submitting}
           >
             Annuler
           </Button>
-          <Button type='submit' size='lg' className='flex items-center gap-2 px-6 shadow-sm'>
+          <Button type='submit' size='lg' disabled={submitting} className='flex items-center gap-2 px-6 shadow-sm'>
             <Save className='h-4 w-4' />
-            {mode === 'create' ? 'Créer le collaborateur' : 'Enregistrer les modifications'}
+            {submitting
+              ? 'Envoi…'
+              : mode === 'create'
+                ? 'Créer le collaborateur'
+                : 'Enregistrer les modifications'}
           </Button>
         </div>
       </form>

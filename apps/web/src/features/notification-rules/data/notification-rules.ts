@@ -1,5 +1,5 @@
-import { notification_groups, notification_rules } from '@lpg/mock-data'
-import type { NotificationRule, RiskLevel } from '@lpg/types'
+﻿import { notification_groups, notification_rules } from '@/lib/entity-data'
+import type { NotificationGroup, NotificationRule, RiskLevel } from '@lpg/types'
 import type { AnomalyType } from '@lpg/types'
 
 export type { RiskLevel, AnomalyType }
@@ -37,9 +37,11 @@ export const routingSeverityLabels: Record<RiskLevel, string> = {
   CRITIQUEEXTREME: 'Critique extrême',
 }
 
-export function getNotifRoutingGroups(): NotifRoutingGroup[] {
-  const rules = notification_rules as NotificationRule[]
-  const groupNameById = new Map(notification_groups.map((g) => [g.id, g.name]))
+export function getNotifRoutingGroups(
+  rules: NotificationRule[] = notification_rules as NotificationRule[],
+  groups: NotificationGroup[] = notification_groups as NotificationGroup[],
+): NotifRoutingGroup[] {
+  const groupNameById = new Map(groups.map((g) => [g.id, g.name]))
 
   const byGroup = new Map<string, NotifRoutingRuleRow[]>()
   for (const rule of rules) {
@@ -63,10 +65,15 @@ export function getNotifRoutingGroups(): NotifRoutingGroup[] {
   }))
 }
 
-export function getNotifRuleCount(): number {
-  return (notification_rules as NotificationRule[]).length
+export function getNotifRuleCount(
+  rows: NotificationRule[] = notification_rules as NotificationRule[],
+): number {
+  return rows.length
 }
 
-export function getNotifActiveRuleCount(): number {
-  return getNotifRoutingGroups().reduce((acc, g) => acc + g.activeRuleCount, 0)
+export function getNotifActiveRuleCount(
+  rules: NotificationRule[] = notification_rules as NotificationRule[],
+  groups: NotificationGroup[] = notification_groups as NotificationGroup[],
+): number {
+  return getNotifRoutingGroups(rules, groups).reduce((acc, g) => acc + g.activeRuleCount, 0)
 }

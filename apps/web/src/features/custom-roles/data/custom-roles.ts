@@ -1,4 +1,4 @@
-import { custom_roles, curated, user_custom_roles } from '@lpg/mock-data'
+﻿import { custom_roles, curated, user_custom_roles } from '@/lib/entity-data'
 import type { CustomRole, UserCustomRole } from '@lpg/types'
 
 export interface CustomRoleView {
