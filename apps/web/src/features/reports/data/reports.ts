@@ -1,5 +1,5 @@
-import { curated, reports } from '@lpg/mock-data'
-import type { Report, ReportFormat, ReportStatus, ReportType } from '@lpg/types'
+﻿import { curated, reports } from '@/lib/entity-data'
+import type { AppUser, Report, ReportFormat, ReportStatus, ReportType } from '@lpg/types'
 
 export type { ReportFormat, ReportStatus, ReportType }
 
@@ -18,25 +18,31 @@ export interface ReportView {
 }
 
 export const reportTypeLabels: Record<ReportType, string> = {
-  OPERATIONAL: 'Opérationnel',
+  OPERATIONAL: 'OpÃ©rationnel',
   FINANCIAL: 'Financier',
-  COMPLIANCE: 'Conformité',
+  COMPLIANCE: 'ConformitÃ©',
 }
 
 export const reportStatusLabels: Record<ReportStatus, string> = {
   PENDING: 'En attente',
-  GENERATING: 'Génération en cours',
-  READY: 'Prêt',
-  FAILED: 'Échec',
-  EXPIRED: 'Expiré',
+  GENERATING: 'GÃ©nÃ©ration en cours',
+  READY: 'PrÃªt',
+  FAILED: 'Ã‰chec',
+  EXPIRED: 'ExpirÃ©',
 }
 
-const USER_NAME_BY_ID: Record<string, string> = Object.fromEntries(
-  curated.users.map((u) => [u.id, `${u.first_name} ${u.last_name}`.trim()]),
-)
+function userNameById(users: readonly AppUser[]): Record<string, string> {
+  return Object.fromEntries(
+    users.map((u) => [u.id, `${u.first_name} ${u.last_name}`.trim()]),
+  )
+}
 
-export function getReports(): ReportView[] {
-  return (reports as Report[]).map((report) => ({
+export function getReports(
+  source: readonly Report[] = reports,
+  users: readonly AppUser[] = curated.users,
+): ReportView[] {
+  const names = userNameById(users)
+  return (source as Report[]).map((report) => ({
     id: report.id,
     name: report.name,
     type: report.type,
@@ -45,23 +51,23 @@ export function getReports(): ReportView[] {
     status: report.status,
     statusLabel: reportStatusLabels[report.status],
     generatedAt: report.generated_at ?? null,
-    generatedBy: report.generated_by ? (USER_NAME_BY_ID[report.generated_by] ?? report.generated_by) : null,
+    generatedBy: report.generated_by ? (names[report.generated_by] ?? report.generated_by) : null,
     expiresAt: report.expires_at ?? null,
     fileSize: report.file_size ?? null,
   }))
 }
 
-export function getReportSummary() {
+export function getReportSummary(rows: ReportView[] = getReports()) {
   return {
-    total: getReports().length,
-    ready: reportCountByStatus('READY'),
-    pending: reportCountByStatus('PENDING') + reportCountByStatus('GENERATING'),
-    failed: reportCountByStatus('FAILED'),
+    total: rows.length,
+    ready: countByStatus(rows, 'READY'),
+    pending: countByStatus(rows, 'PENDING') + countByStatus(rows, 'GENERATING'),
+    failed: countByStatus(rows, 'FAILED'),
   }
 }
 
-function reportCountByStatus(status: ReportStatus): number {
-  return getReports().filter((r) => r.status === status).length
+function countByStatus(rows: readonly ReportView[], status: ReportStatus): number {
+  return rows.filter((r) => r.status === status).length
 }
 
 export function formatFileSize(bytes: number | null): string {

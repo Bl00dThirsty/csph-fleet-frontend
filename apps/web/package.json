@@ -26,7 +26,6 @@
     "@hookform/resolvers": "^5.5.7",
     "@lpg/api-client": "workspace:*",
     "@lpg/config": "workspace:*",
-    "@lpg/mock-data": "workspace:*",
     "@lpg/permissions": "workspace:*",
     "@lpg/types": "workspace:*",
     "@lpg/ui": "workspace:*",
@@ -73,7 +72,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@faker-js/faker": "^10.4.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/eslint-plugin-query": "^5.99.0",
     "@tanstack/react-query-devtools": "^5.99.0",

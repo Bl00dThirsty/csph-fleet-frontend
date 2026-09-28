@@ -108,9 +108,15 @@ describe('can', () => {
     expect(can('AGENT', 'delete', 'declarations')).toBe(false)
   })
 
-  it('TRANSPORTEUR manages livreurs but cannot manage users', () => {
+  it('TRANSPORTEUR manages livreurs but cannot delete or manage users', () => {
     expect(can('TRANSPORTEUR', 'manage', 'livreurs')).toBe(true)
-    expect(can('TRANSPORTEUR', 'read', 'users')).toBe(false)
+    // TRANSPORTER is granted PERSON_VIEW/PERSON_CREATE/PERSON_UPDATE by the backend
+    // (RolesPermissionsInitializer:479) but no PERSON_DELETE, so the web layer mirrors
+    // that: read and create users, never delete or manage them.
+    expect(can('TRANSPORTEUR', 'read', 'users')).toBe(true)
+    expect(can('TRANSPORTEUR', 'create', 'users')).toBe(true)
+    expect(can('TRANSPORTEUR', 'delete', 'users')).toBe(false)
+    expect(can('TRANSPORTEUR', 'manage', 'users')).toBe(false)
   })
 
   it('hasPermission matches can', () => {
@@ -155,10 +161,11 @@ describe('CRUD codes for M3', () => {
 })
 
 describe('hierarchy', () => {
-  it('SUPERADMIN can create everyone; LIVREUR nobody', () => {
+  it('SUPERADMIN can create everyone; LIVREUR only its own tier', () => {
     for (const role of ROLES) expect(canCreate('SUPERADMIN', role)).toBe(true)
     expect(getCreatableRoles('SUPERADMIN')).toHaveLength(ROLES.length)
-    expect(getCreatableRoles('LIVREUR')).toEqual(['LIVREUR'])
+    // LIVREUR and DRIVER share hierarchy level 20: neither outranks the other.
+    expect(getCreatableRoles('LIVREUR')).toEqual(['LIVREUR', 'DRIVER'])
   })
 
   it('ADMIN cannot create SUPERADMIN', () => {

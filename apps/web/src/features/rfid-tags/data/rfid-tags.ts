@@ -1,4 +1,4 @@
-import { client_sites, rfid_tags, sites } from '@lpg/mock-data'
+﻿import { client_sites, rfid_tags, sites } from '@/lib/entity-data'
 import type { RfidTag, RfidTagStatus } from '@lpg/types'
 
 export type RfidTagView = {
@@ -12,11 +12,11 @@ export type RfidTagView = {
 
 export const rfidTagStatusLabels: Record<RfidTagStatus, string> = {
   AVAILABLE: 'Disponible',
-  ASSIGNEDTOBOTTLE: 'Assignée à une bouteille',
+  ASSIGNEDTOBOTTLE: 'AssignÃ©e Ã  une bouteille',
   INTRANSITOUT: 'En transit sortie',
-  INTRANSITIN: 'En transit entrée',
+  INTRANSITIN: 'En transit entrÃ©e',
   LOST: 'Perdu',
-  BLOCKED: 'Bloqué',
+  BLOCKED: 'BloquÃ©',
 }
 
 export const rfidTagStatusClasses: Record<RfidTagStatus, string> = {
@@ -30,28 +30,28 @@ export const rfidTagStatusClasses: Record<RfidTagStatus, string> = {
 
 export const rfidTagStatusOptions = [
   { label: 'Disponible', value: 'AVAILABLE' },
-  { label: 'Assignée à une bouteille', value: 'ASSIGNEDTOBOTTLE' },
+  { label: 'AssignÃ©e Ã  une bouteille', value: 'ASSIGNEDTOBOTTLE' },
   { label: 'En transit sortie', value: 'INTRANSITOUT' },
-  { label: 'En transit entrée', value: 'INTRANSITIN' },
+  { label: 'En transit entrÃ©e', value: 'INTRANSITIN' },
   { label: 'Perdu', value: 'LOST' },
-  { label: 'Bloqué', value: 'BLOCKED' },
+  { label: 'BloquÃ©', value: 'BLOCKED' },
 ] as const satisfies ReadonlyArray<{ label: string; value: RfidTagStatus }>
 
 const siteById = new Map(sites.map((site) => [site.id, site.name]))
 const clientSiteById = new Map(client_sites.map((csite) => [csite.id, csite.name]))
 
 function locationName(tag: RfidTag): string {
-  if (tag.current_site_id) return siteById.get(tag.current_site_id) ?? '—'
+  if (tag.current_site_id) return siteById.get(tag.current_site_id) ?? 'â€”'
   if (tag.current_client_site_id)
-    return clientSiteById.get(tag.current_client_site_id) ?? '—'
-  return '—'
+    return clientSiteById.get(tag.current_client_site_id) ?? 'â€”'
+  return 'â€”'
 }
 
 function buildView(tag: RfidTag): RfidTagView {
   return {
     tag,
     tag_id: tag.tag_id,
-    bottle_serial: tag.bottle_serial ?? '—',
+    bottle_serial: tag.bottle_serial ?? 'â€”',
     status: tag.status,
     location: locationName(tag),
     created_at: tag.created_at ?? '',
@@ -78,6 +78,6 @@ export function getRfidTagLocationOptions(
   tags: readonly RfidTagView[],
 ): { label: string; value: string }[] {
   return Array.from(new Set(tags.map((view) => view.location))).filter(
-    (location) => location !== '—',
+    (location) => location !== 'â€”',
   ).map((location) => ({ label: location, value: location }))
 }

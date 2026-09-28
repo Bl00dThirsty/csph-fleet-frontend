@@ -12,6 +12,10 @@ export type Role =
   | 'MARKETEUR'
   | 'TRANSPORTEUR'
   | 'LIVREUR'
+  // DRIVER is its own backend role (PDA mobile missions/scans/deliveries,
+  // no web interface) — not an alias of LIVREUR. Collapsing them hid the
+  // driver dropdown's real population.
+  | 'DRIVER'
 
 export type OrgType =
   | 'REGULATEUR'

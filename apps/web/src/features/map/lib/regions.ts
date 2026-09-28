@@ -40,8 +40,8 @@ export function getRegionSummary(code: Region): RegionSummary {
 }
 
 export function regionsForMap(): readonly RegionSummary[] {
-  // curated.regions is now empty (mock-data stub); live region list comes from
-  // api.regions.list() which is wired via the regions-store. Pages that need
-  // a populated list should call regionsForMap() once the store is hydrated.
+  // No fixture regions: the live list comes from api.regions.list(), wired via
+  // the regions-store. Pages that need a populated list should call
+  // regionsForMap() once the store is hydrated.
   return []
 }

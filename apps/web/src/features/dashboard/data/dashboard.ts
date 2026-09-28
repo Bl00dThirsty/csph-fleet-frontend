@@ -4,10 +4,17 @@ import {
   type RouteEventSeverity,
   type RouteTripStatus,
   type RouteTripView,
+  type TourActivity,
 } from '@/features/tours/data/tour-activity'
-import { sites } from '@/features/sites/data/sites'
-import { trucks } from '@/features/trucks/data/trucks'
+import { sites, type Site } from '@/features/sites/data/sites'
+import { trucks, type Truck } from '@/features/trucks/data/trucks'
 import { quantityInfo } from '@/features/trucks/lib/quantity'
+
+export interface DashboardSource {
+  routes?: readonly TourActivity[]
+  trucks?: readonly Truck[]
+  sites?: readonly Site[]
+}
 
 export type DashboardPeriod = 'daily' | 'weekly' | 'monthly'
 export type DashboardMetricTone = 'sky' | 'emerald' | 'amber' | 'rose'
@@ -478,12 +485,13 @@ function buildCadence(
   })
 }
 
-function buildReserveSites(): DashboardReserveSite[] {
-  const routeViews = getRouteTripsView()
-
+function buildReserveSites(
+  siteRows: readonly Site[] = sites,
+  routeViews: readonly RouteTripView[] = getRouteTripsView(),
+): DashboardReserveSite[] {
   return Object.entries(reserveConfigBySiteId)
     .map(([siteId, config]) => {
-      const site = sites.find((candidate) => candidate.id === siteId)
+      const site = siteRows.find((candidate) => candidate.id === siteId)
 
       if (!site) {
         // Live site data not yet hydrated (sites store empty during cold
@@ -580,14 +588,17 @@ function buildReserveSites(): DashboardReserveSite[] {
     })
 }
 
-function buildFleetSummaries(totalTransportedTM: number) {
-  const routeViews = getRouteTripsView()
+function buildFleetSummaries(
+  totalTransportedTM: number,
+  truckRows: readonly Truck[] = trucks,
+  routeViews: readonly RouteTripView[] = getRouteTripsView(),
+) {
   const fleets = new Map<
     string,
     Omit<DashboardFleetSummary, 'sharePercent' | 'color'>
   >()
 
-  for (const truck of trucks) {
+  for (const truck of truckRows) {
     if (!fleets.has(truck.tenant_name)) {
       fleets.set(truck.tenant_name, {
         fleetName: truck.tenant_name,
@@ -745,8 +756,10 @@ function buildRouteContributions(
     .sort((left, right) => right.loadedQuantity - left.loadedQuantity)
 }
 
-function buildAlerts(reserveSites: readonly DashboardReserveSite[]) {
-  const routeViews = getRouteTripsView()
+function buildAlerts(
+  reserveSites: readonly DashboardReserveSite[],
+  routeViews: readonly RouteTripView[] = getRouteTripsView(),
+) {
   const alerts: DashboardAlert[] = []
 
   for (const site of reserveSites) {
@@ -826,7 +839,7 @@ function buildAlerts(reserveSites: readonly DashboardReserveSite[]) {
 }
 
 function buildRecentActivities(
-  routeViews: ReturnType<typeof getRouteTripsView>,
+  routeViews: readonly TourActivity[],
   reserveSites: readonly DashboardReserveSite[],
   generatedAt: string
 ) {
@@ -917,8 +930,10 @@ function buildRecentActivities(
     .slice(0, 6)
 }
 
-export function buildDashboardView(role?: string, _orgId?: string, orgName?: string): DashboardView {
-  const routeViews = getRouteTripsView()
+export function buildDashboardView(role?: string, _orgId?: string, orgName?: string, source: DashboardSource = {}): DashboardView {
+  const routeViews = source.routes ?? getRouteTripsView()
+  const truckRows = source.trucks ?? trucks
+  const siteRows = source.sites ?? sites
   const isMarketer = role === 'MARKETEUR'
   const isTransporter = role === 'TRANSPORTEUR'
 
@@ -932,8 +947,8 @@ export function buildDashboardView(role?: string, _orgId?: string, orgName?: str
   }
 
   const routeSummary = buildRouteSummary(filteredRoutes)
-  const reserveSites = buildReserveSites()
-  const alerts = buildAlerts(reserveSites)
+  const reserveSites = buildReserveSites(siteRows, filteredRoutes)
+  const alerts = buildAlerts(reserveSites, filteredRoutes)
   const totalTransportedTM = filteredRoutes.reduce(
     (total, trip) => total + trip.loadedQuantity,
     0
@@ -950,10 +965,10 @@ export function buildDashboardView(role?: string, _orgId?: string, orgName?: str
   const reserveCoverageDays = roundToOne(
     totalReserveTM / Math.max(totalDeliveredTM, 1)
   )
-  const activeTrucks = trucks.filter((truck) =>
+  const activeTrucks = truckRows.filter((truck) =>
     ['PLANNED', 'INPROGRESS', 'CHECKPOINTACTIVE', 'PENDINGTRANSPORTERACK', 'ACKNOWLEDGED'].includes(truck.tournee_status)
   ).length
-  const riskTrucks = trucks.filter((truck) => truck.risk_level !== 'FAIBLE').length
+  const riskTrucks = truckRows.filter((truck) => truck.risk_level !== 'FAIBLE').length
   const abnormalLossTM = filteredRoutes.reduce(
     (total, trip) => total + trip.unaccounted,
     0
@@ -970,7 +985,7 @@ export function buildDashboardView(role?: string, _orgId?: string, orgName?: str
       ? trip.lastUpdatedAt
       : latest
   }, filteredRoutes[0]?.lastUpdatedAt ?? new Date().toISOString())
-  const fleets = buildFleetSummaries(totalTransportedTM)
+  const fleets = buildFleetSummaries(totalTransportedTM, truckRows, filteredRoutes)
   const flowBreakdown = buildFlowBreakdown(fleets, totalTransportedTM)
   const reserveSummary = buildReserveSummary(reserveSites)
   const routeContributions = buildRouteContributions(
@@ -1001,7 +1016,7 @@ export function buildDashboardView(role?: string, _orgId?: string, orgName?: str
       plannedTrips: routeSummary.plannedTrips,
       incidentTrips: routeSummary.incidentTrips,
       activeTrucks,
-      totalTrucks: trucks.length,
+      totalTrucks: truckRows.length,
       riskTrucks,
       abnormalLossTM,
       openAlerts: alerts.length,

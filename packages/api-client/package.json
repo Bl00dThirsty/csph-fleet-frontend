@@ -8,7 +8,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@lpg/mock-data": "workspace:*",
     "@lpg/types": "workspace:*",
     "axios": "^1.15.0"
   },

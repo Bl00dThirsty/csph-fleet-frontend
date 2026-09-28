@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type {
   AppUser,
   Device as CuratedDevice,
@@ -28,12 +28,12 @@ export interface DeviceAssignmentView {
   firmwareVersion: string
 }
 
-export function getDeviceAssignments(): DeviceAssignmentView[] {
-  const devices = curated.devices as CuratedDevice[]
-  const users = curated.users as AppUser[]
-  const vehicles = curated.vehicles as Vehicle[]
-  const orgs = curated.organizations as Organization[]
-
+export function getDeviceAssignments(
+  devices: CuratedDevice[] = curated.devices as CuratedDevice[],
+  users: AppUser[] = curated.users as AppUser[],
+  vehicles: Vehicle[] = curated.vehicles as Vehicle[],
+  orgs: Organization[] = curated.organizations as Organization[],
+): DeviceAssignmentView[] {
   const userById = new Map(users.map((u) => [u.id, u]))
   const vehicleById = new Map(vehicles.map((v) => [v.id, v]))
   const orgById = new Map(orgs.map((o) => [o.id, o]))

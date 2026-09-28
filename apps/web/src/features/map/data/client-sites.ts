@@ -1,4 +1,4 @@
-import { curated, organizations } from '@lpg/mock-data'
+﻿import { curated, organizations } from '@/lib/entity-data'
 import type { ClientSite } from '@lpg/types'
 
 export type ClientSiteMarkerType = 'client-marketer' | 'client-delivery' | 'client-other'
@@ -21,7 +21,7 @@ const REGION_LABELS: Record<string, string> = {
   ADAMAOUA: 'Adamaoua',
   CENTRE: 'Centre',
   EST: 'Est',
-  EXTREMENORD: 'Extrême-Nord',
+  EXTREMENORD: 'ExtrÃªme-Nord',
   LITTORAL: 'Littoral',
   NORD: 'Nord',
   NORDOUEST: 'Nord-Ouest',
@@ -33,13 +33,13 @@ const REGION_LABELS: Record<string, string> = {
 const orgById = new Map(organizations.map((o) => [o.id, o.name]))
 
 function cityFromAddress(address: string | undefined): string {
-  if (!address) return '—'
+  if (!address) return 'â€”'
   const parts = address.split(',').map((p) => p.trim()).filter(Boolean)
   const beforeCam = parts.filter((p) => !/cameroun/i.test(p))
-  if (beforeCam.length === 0) return '—'
+  if (beforeCam.length === 0) return 'â€”'
   const last = beforeCam[beforeCam.length - 1]!
   const tokens = last.split(/\s+/)
-  return tokens[tokens.length - 1] ?? '—'
+  return tokens[tokens.length - 1] ?? 'â€”'
 }
 
 function markerTypeFor(clientSite: ClientSite): ClientSiteMarkerType {

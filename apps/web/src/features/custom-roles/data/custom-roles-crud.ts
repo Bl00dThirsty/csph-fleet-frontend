@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import { PERMISSION_CATALOG } from '@lpg/permissions'
 import type { CustomRole } from '@lpg/types'
 import { field, type FieldConfig, type FormValues } from '@/components/entity-crud'
@@ -14,11 +14,11 @@ const PERMISSION_OPTIONS: { label: string; value: string }[] = PERMISSION_CATALO
 }))
 
 export const customRoleFields: FieldConfig[] = [
-  field.text('name', 'Nom du rôle', { required: true }),
+  field.text('name', 'Nom du rÃ´le', { required: true }),
   field.select('org_id', 'Organisation', ORG_OPTIONS, { required: true }),
   field.textarea('description', 'Description'),
   field.checklist('permission_codes', 'Permissions', PERMISSION_OPTIONS),
-  field.switchField('is_active', 'Rôle actif'),
+  field.switchField('is_active', 'RÃ´le actif'),
 ]
 
 export function customRoleToForm(r: CustomRole): FormValues {

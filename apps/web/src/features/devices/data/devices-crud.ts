@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type { Device, DeviceStatus, DeviceType } from '@lpg/types'
 import { field, type FieldConfig, type FormValues } from '@/components/entity-crud'
 
@@ -31,7 +31,7 @@ export const deviceStatusOptions: { label: string; value: string }[] = (
 ).map((value) => ({ label: value, value }))
 
 export const deviceFields: FieldConfig[] = [
-  field.text('serial_number', 'N° de série', { required: true }),
+  field.text('serial_number', 'NÂ° de sÃ©rie', { required: true }),
   field.select('device_type', 'Type', deviceTypeOptions, { required: true }),
   field.select('status', 'Statut', deviceStatusOptions, { required: true, defaultValue: 'UNASSIGNED' }),
   field.select('org_id', 'Organisation', orgOptions),

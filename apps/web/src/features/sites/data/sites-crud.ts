@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type { ClientSite, Region, Site } from '@lpg/types'
 import { field, type FieldConfig, type FormValues } from '@/components/entity-crud'
 
@@ -14,7 +14,7 @@ const ORG_OPTIONS = (curated.organizations as Array<{ id: string; name: string }
 export const siteFields: FieldConfig[] = [
   field.text('name', 'Nom du site', { required: true }),
   field.select('org_id', 'Organisation', ORG_OPTIONS, { required: true }),
-  field.select('region', 'Région', REGION_OPTIONS, { required: true }),
+  field.select('region', 'RÃ©gion', REGION_OPTIONS, { required: true }),
   field.text('address', 'Adresse'),
   field.switchField('is_active', 'Site actif'),
 ]
@@ -44,7 +44,7 @@ export function siteFromForm(v: FormValues): Partial<Site> {
 export const clientSiteFields: FieldConfig[] = [
   field.text('name', 'Nom du site client', { required: true }),
   field.select('client_org_id', 'Organisation cliente', ORG_OPTIONS, { required: true }),
-  field.select('region', 'Région', REGION_OPTIONS, { required: true }),
+  field.select('region', 'RÃ©gion', REGION_OPTIONS, { required: true }),
   field.text('address', 'Adresse'),
   field.switchField('is_active', 'Site actif'),
 ]

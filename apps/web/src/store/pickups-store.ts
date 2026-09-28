@@ -1,5 +1,6 @@
-import { create } from 'zustand'
-import { curated } from '@lpg/mock-data'
+﻿import { create } from 'zustand'
+import { curated } from '@/lib/entity-data'
+import { isHydrationFresh } from '@/lib/hydration'
 import { api } from '@lpg/api-client'
 import type { PickupRequest, PickupStatus } from '@lpg/types'
 import { siteName, orgName, type Pickup } from '@/features/pickups/data/pickups'
@@ -29,6 +30,9 @@ interface PickupsState {
   assignedVehicles: Record<string, string[]>
   loading: boolean
   error: string | null
+  /** 3.8 — set once fetchPickups() has succeeded; per-page refreshes no-op while fresh. */
+  hasLoaded: boolean
+  lastFetchedAt: number
   all: () => PickupRequest[]
   viewById: (id: string) => PickupRequest | undefined
   fetchPickups: () => Promise<void>
@@ -63,6 +67,8 @@ export const usePickupsStore = create<PickupsState>()((set, get) => ({
   assignedVehicles: {},
   loading: false,
   error: null,
+  hasLoaded: false,
+  lastFetchedAt: 0,
 
   all() {
     return get().pickups
@@ -73,17 +79,26 @@ export const usePickupsStore = create<PickupsState>()((set, get) => ({
   },
 
   async fetchPickups() {
-    set({ loading: true, error: null })
-    try {
-      const res = await api.pickups.list(0, 100)
-      if (res && Array.isArray(res.data) && res.data.length > 0) {
-        set({ pickups: res.data, loading: false })
-      } else {
+    // 3.8 — single-flight + freshness: mount hydration and per-page
+    // refreshes share one request; fresh data makes this a no-op.
+    if (pickupsInflight) return pickupsInflight
+    if (get().hasLoaded && isHydrationFresh(get().lastFetchedAt)) return
+    pickupsInflight = (async () => {
+      set({ loading: true, error: null })
+      try {
+        const res = await api.pickups.list(0, 100)
+        if (res && Array.isArray(res.data) && res.data.length > 0) {
+          set({ pickups: res.data, loading: false, hasLoaded: true, lastFetchedAt: Date.now() })
+        } else {
+          set({ loading: false, hasLoaded: true, lastFetchedAt: Date.now() })
+        }
+      } catch {
         set({ loading: false })
+      } finally {
+        pickupsInflight = null
       }
-    } catch {
-      set({ loading: false })
-    }
+    })()
+    return pickupsInflight
   },
 
   createPickup(draft: PickupDraft, vehicleIds?: string[]) {
@@ -195,3 +210,7 @@ export const usePickupsStore = create<PickupsState>()((set, get) => ({
     return get().pickups.map((r, idx) => mapPickupToView(r, idx))
   },
 }))
+
+// 3.8 — module-level single-flight for fetchPickups (shared by mount
+// hydration and per-page refreshes).
+let pickupsInflight: Promise<void> | null = null

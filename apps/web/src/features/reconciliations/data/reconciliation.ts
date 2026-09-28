@@ -1,4 +1,4 @@
-import { delivery_tours, getSettingNumber } from '@lpg/mock-data'
+﻿import { delivery_tours, getSettingNumber } from '@/lib/entity-data'
 import type { Declaration, Reconciliation } from '@lpg/types'
 
 export interface ReconciliationComputation {

@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type { PickupRequest, Organization, Site, ClientSite, User } from '@lpg/types'
 
 export type PickupStatusLabel = {
@@ -8,10 +8,10 @@ export type PickupStatusLabel = {
 
 export const pickupStatusOptions: PickupStatusLabel[] = [
   { label: 'Brouillon', value: 'DRAFT' },
-  { label: 'Validé', value: 'VALIDATED' },
+  { label: 'ValidÃ©', value: 'VALIDATED' },
   { label: 'En cours', value: 'INPROGRESS' },
-  { label: 'Terminé', value: 'COMPLETED' },
-  { label: 'Annulé', value: 'CANCELLED' },
+  { label: 'TerminÃ©', value: 'COMPLETED' },
+  { label: 'AnnulÃ©', value: 'CANCELLED' },
 ]
 
 export function getPickupsForMarketer(marketerOrgId: string): (PickupRequest & { source_site?: Site; destination_site?: Site | ClientSite; requester?: User })[] {

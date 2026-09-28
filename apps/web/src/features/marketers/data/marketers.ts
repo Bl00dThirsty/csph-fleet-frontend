@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type { Organization } from '@lpg/types'
 
 export const marketerStatusOptions = [

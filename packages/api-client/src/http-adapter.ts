@@ -1,7 +1,6 @@
 import axios, { type AxiosInstance } from 'axios'
 import type { ApiEnvelope } from '@lpg/types'
 import type { ApiAdapter, ApiPagination, AuthResult, Credentials, ListResult, RequestOptions } from './adapter.ts'
-import { fakeAdapter } from './fake-adapter.ts'
 
 type AccessTokenGetter = () => string | null
 type UnauthorizedHandler = () => void
@@ -174,7 +173,9 @@ export function mapBackendPersonToUser(raw: any): any {
   return {
     id: raw.id,
     username: raw.personId ?? null,
-    email: raw.email ?? `${raw.personId ?? 'user'}@cspHq.cm`,
+    // No synthesized address: the old fallback minted `personId@cspHq.cm`,
+    // a deliverable-looking email nobody owns. Blank until the server says.
+    email: raw.email ?? '',
     first_name: firstName ?? raw.personId ?? '—',
     last_name: lastName ?? '',
     system_role: roleCodes[0] ?? 'LIVREUR',
@@ -198,6 +199,42 @@ export function mapBackendPersonToUser(raw: any): any {
 
 const EMPTY_PAGE: ApiPagination = { page: 1, limit: 50, total: 0, pages: 1 }
 
+/**
+ * Gateway errors are NOT ApiResponse envelopes: GatewayErrorWebExceptionHandler
+ * emits `{status, error, targetService, hint, message}` (and HTML to browsers).
+ * Axios rejects non-2xx before the envelope checks below ever run, so without
+ * this the UI surfaces "Request failed with status code 503" instead of the
+ * gateway's own message + routing hint. Normalize every transport failure
+ * into a readable Error carrying status, target service, and hint.
+ */
+export function toApiError(error: unknown, path: string): Error {
+  const response = (error as { response?: { status?: number; data?: unknown } })?.response
+  if (!response) {
+    const message = error instanceof Error ? error.message : String(error)
+    return new Error(`Serveur injoignable (${path}) : ${message}`)
+  }
+  const status = response.status ?? 0
+  const data = response.data
+  if (typeof data === 'string' && data.includes('<html')) {
+    return new Error(`Erreur passerelle ${status || ''} sur ${path} : réponse HTML au lieu de JSON.`.trim())
+  }
+  if (data && typeof data === 'object') {
+    const body = data as Record<string, unknown>
+    // Gateway shape: {status, error, targetService, hint, message}.
+    // Spring ApiResponse shape: {success: false, message}.
+    const message =
+      (typeof body.message === 'string' && body.message) ||
+      (typeof body.error === 'string' && body.error) ||
+      `Requête échouée (${status})`
+    const target = typeof body.targetService === 'string' ? ` [${body.targetService}]` : ''
+    const hint = typeof body.hint === 'string' && body.hint ? ` — ${body.hint}` : ''
+    const err = new Error(`${message}${target}${hint}`)
+    ;(err as Error & { status?: number }).status = status
+    return err
+  }
+  return new Error(`Requête échouée sur ${path} (${status || 'sans réponse'})`)
+}
+
 function deriveSystemRole(raw: any): string {
   const roleCandidate = raw.roles && raw.roles.length > 0 ? String(raw.roles[0]).toUpperCase().replace(/^ROLE_/, '') : ''
   
@@ -212,7 +249,11 @@ function deriveSystemRole(raw: any): string {
   if (roleCandidate === 'SUPERVISOR' || roleCandidate === 'SUPERVISEUR') return 'SUPERVISOR'
   if (roleCandidate === 'AGENT') return 'AGENT'
   if (roleCandidate === 'INTEGRATEUR' || roleCandidate === 'INTEGRATOR') return 'INTEGRATEUR'
-  if (roleCandidate === 'LIVREUR' || roleCandidate === 'DRIVER') return 'LIVREUR'
+  if (roleCandidate === 'LIVREUR') return 'LIVREUR'
+  // DRIVER is its own backend role (PDA mobile), not an alias of LIVREUR.
+  // The old collapse mapped every driver to LIVREUR, permanently emptying the
+  // driver dropdown that filters on system_role === 'DRIVER'.
+  if (roleCandidate === 'DRIVER') return 'DRIVER'
 
   // Fallback by username or org prefix
   const username = String(raw.username || '').toLowerCase()
@@ -248,8 +289,12 @@ function mapLoginResponseToAuthResult(raw: any): AuthResult {
   const lastName = parts.slice(1).join(' ') || ''
   const email = raw.username && raw.username.includes('@') ? raw.username : `${raw.username || 'user'}@gpl.cm`
 
-  const orgId = raw.orgId || raw.organizationId || (systemRole === 'MARKETEUR' ? 'org-0002-sctm-0000-000000000001' : undefined)
-  const orgName = raw.orgName || (systemRole === 'MARKETEUR' ? 'SCTM - Société Camerounaise de Transformation Métallique' : (systemRole === 'TRANSPORTEUR' ? 'Express GPL Transport' : 'CSPH Siège'))
+  // No invented org identity: when the server omits the org, the fields stay
+  // undefined. The old code fell back to a hardcoded SCTM id and names
+  // ("Express GPL Transport", "CSPH Siège"), attributing every org-less login
+  // to a real company.
+  const orgId = raw.orgId || raw.organizationId || undefined
+  const orgName = raw.orgName || undefined
 
   return {
     access_token: raw.accessToken || raw.access_token,
@@ -437,12 +482,17 @@ export function createHttpAdapter(baseURL?: string): ApiAdapter {
     const rewritten = rewritePath(path)
     if (rewritten.unimplemented) return undefined as T
 
-    const res = await client.request<any>({
-      url: rewritten.path,
-      method: (init?.method as any) ?? 'GET',
-      data: body,
-      headers: init?.headers,
-    })
+    let res
+    try {
+      res = await client.request<any>({
+        url: rewritten.path,
+        method: (init?.method as any) ?? 'GET',
+        data: body,
+        headers: init?.headers,
+      })
+    } catch (error) {
+      throw toApiError(error, rewritten.path)
+    }
     const data = res.data?.data !== undefined ? res.data.data : res.data
     if (res.data && res.data.success === false) throw new Error(res.data.message || 'Request failed')
 
@@ -467,12 +517,17 @@ export function createHttpAdapter(baseURL?: string): ApiAdapter {
     const rewritten = rewritePath(path)
     if (rewritten.unimplemented) return { data: [] as T[], pagination: { ...EMPTY_PAGE } }
 
-    const res = await client.request<any>({
-      url: rewritten.path,
-      method: (init?.method as any) ?? 'GET',
-      data: init?.body,
-      headers: init?.headers,
-    })
+    let res
+    try {
+      res = await client.request<any>({
+        url: rewritten.path,
+        method: (init?.method as any) ?? 'GET',
+        data: init?.body,
+        headers: init?.headers,
+      })
+    } catch (error) {
+      throw toApiError(error, rewritten.path)
+    }
     if (res.data && res.data.success === false) throw new Error(res.data.message || 'Request failed')
 
     const envelopeData = res.data?.data !== undefined ? res.data.data : res.data
@@ -562,8 +617,11 @@ export function createHttpAdapter(baseURL?: string): ApiAdapter {
   }
 }
 
+/**
+ * The single adapter factory. There is no fake mode: the fake-adapter served
+ * invented API responses and its `VITE_API_MODE=fake` switch is deleted with
+ * it. Every call below hits the Spring backend (or fails loudly trying).
+ */
 export function createApiAdapter(): ApiAdapter {
-  const mode = (import.meta as any).env?.VITE_API_MODE
-  if (mode === 'fake') return fakeAdapter
   return createHttpAdapter()
 }

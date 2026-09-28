@@ -1,10 +1,9 @@
 /**
  * Generic CRUD data-access layer over `@lpg/api-client`.
  *
- * Every write goes through `api.<resource>` (the adapter) — never a direct
- * `curated` mutation. The fake adapter (in `api-client`) now supports
- * POST/PATCH/DELETE against its in-memory collections, so this works today
- * and transparently against the Spring backend once `VITE_API_MODE=http`.
+ * Every write goes through `api.<resource>` (the HTTP adapter, straight at the
+ * Spring backend) — never a local mutation. The fake adapter is deleted, so
+ * there is no in-memory mode anymore.
  *
  * Reads + cache invalidation use React Query, matching the existing
  * `lib/api/use-resources.ts` convention. This is the single data-source of

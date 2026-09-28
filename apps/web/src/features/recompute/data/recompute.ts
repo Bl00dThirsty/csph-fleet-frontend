@@ -1,4 +1,4 @@
-import { risk_scores } from '@lpg/mock-data'
+﻿import { risk_scores } from '@/lib/entity-data'
 import type { RiskScore, RiskLevel, RiskEntityType } from '@lpg/types'
 
 export interface RiskScoreView {
@@ -14,10 +14,10 @@ export interface RiskScoreView {
 
 export const riskLevelLabels: Record<RiskLevel, string> = {
   FAIBLE: 'Faible',
-  MODERE: 'Modéré',
-  ELEVE: 'Élevé',
+  MODERE: 'ModÃ©rÃ©',
+  ELEVE: 'Ã‰levÃ©',
   CRITIQUE: 'Critique',
-  CRITIQUEEXTREME: 'Critique extrême',
+  CRITIQUEEXTREME: 'Critique extrÃªme',
 }
 
 export const riskLevelClasses: Record<RiskLevel, string> = {
@@ -33,10 +33,10 @@ export const entityTypeLabels: Record<RiskEntityType, string> = {
   TRANSPORTEUR: 'Transporteur',
   LIVREUR: 'Livreur',
   SITE: 'Site',
-  TOURNEE: 'Tournée',
+  TOURNEE: 'TournÃ©e',
   CLIENT: 'Client',
   CLIENTSITE: 'Site client',
-  VEHICLE: 'Véhicule',
+  VEHICLE: 'VÃ©hicule',
 }
 
 export function buildRiskScoreView(scores: RiskScore[]): RiskScoreView[] {

@@ -1,4 +1,4 @@
-import { settings } from '@lpg/mock-data'
+﻿import { settings } from '@/lib/entity-data'
 import type { Setting } from '@lpg/types'
 
 export type { Setting }
@@ -25,8 +25,8 @@ export const settingCategoryLabels: Record<string, string> = {
   REPORT: 'Rapports',
 }
 
-export function getSettings(): SettingView[] {
-  return (settings as Setting[]).map((setting) => ({
+export function getSettings(rows: Setting[] = settings as Setting[]): SettingView[] {
+  return (rows as Setting[]).map((setting) => ({
     key: setting.setting_key,
     value: String(setting.setting_value),
     valueType: setting.value_type,
@@ -38,20 +38,22 @@ export function getSettings(): SettingView[] {
   }))
 }
 
-export function getSettingSummary() {
-  const rows = getSettings()
-  const categories = new Set(rows.map((r) => r.categoryLabel))
+export function getSettingSummary(rows: Setting[] = settings as Setting[]) {
+  const views = getSettings(rows)
+  const categories = new Set(views.map((r) => r.categoryLabel))
   return {
-    total: rows.length,
-    encrypted: rows.filter((r) => r.isEncrypted).length,
+    total: views.length,
+    encrypted: views.filter((r) => r.isEncrypted).length,
     categories: categories.size,
   }
 }
 
-export function getSettingsByCategory(): Record<string, SettingView[]> {
-  const rows = getSettings()
+export function getSettingsByCategory(
+  rows: Setting[] = settings as Setting[],
+): Record<string, SettingView[]> {
+  const views = getSettings(rows)
   const grouped: Record<string, SettingView[]> = {}
-  for (const row of rows) {
+  for (const row of views) {
     const key = row.categoryLabel
     grouped[key] = grouped[key] ?? []
     grouped[key].push(row)

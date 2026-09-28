@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { api, type AuthUser } from '@lpg/api-client'
+import { isHydrationFresh } from '@/lib/hydration'
 import type { Role, User as CuratedUser } from '@lpg/types'
 
 /**
@@ -51,6 +52,8 @@ interface UsersState {
   isLoading: boolean
   error: string | null
   hasLoaded: boolean
+  /** 3.8 — epoch ms of the last successful fetchUsers(); per-page refreshes no-op while fresh. */
+  lastFetchedAt: number
   fetchUsers: () => Promise<void>
   createUser: (user: Omit<CuratedUser, 'id' | 'created_at' | 'updated_at'> & { password?: string; username?: string }) => Promise<CuratedUser>
   createDriver: (payload: CreateUserPayload) => Promise<CuratedUser>
@@ -90,23 +93,33 @@ function extractError(err: unknown): string {
   )
 }
 
-export const useUsersStore = create<UsersState>()((set) => ({
+export const useUsersStore = create<UsersState>()((set, get) => ({
   users: [],
   isLoading: false,
   error: null,
   hasLoaded: false,
+  lastFetchedAt: 0,
 
   async fetchUsers() {
-    set({ isLoading: true, error: null })
-    try {
-      const result = await api.users.list()
-      const list = (result.data ?? []) as CuratedUser[]
-      set({ users: list, isLoading: false, hasLoaded: true })
-    } catch (err) {
-      const message = extractError(err)
-      set({ isLoading: false, error: message, hasLoaded: true })
-      throw new Error(message)
-    }
+    // 3.8 — single-flight + freshness: mount hydration and per-page
+    // refreshes share one request; fresh data makes this a no-op.
+    if (usersInflight) return usersInflight
+    if (get().hasLoaded && isHydrationFresh(get().lastFetchedAt)) return
+    usersInflight = (async () => {
+      set({ isLoading: true, error: null })
+      try {
+        const result = await api.users.list()
+        const list = (result.data ?? []) as CuratedUser[]
+        set({ users: list, isLoading: false, hasLoaded: true, lastFetchedAt: Date.now() })
+      } catch (err) {
+        const message = extractError(err)
+        set({ isLoading: false, error: message, hasLoaded: true })
+        throw new Error(message)
+      } finally {
+        usersInflight = null
+      }
+    })()
+    return usersInflight
   },
 
   /**
@@ -270,6 +283,10 @@ export const useUsersStore = create<UsersState>()((set) => ({
     }))
   },
 }))
+
+// 3.8 — module-level single-flight for fetchUsers (shared by mount
+// hydration and per-page refreshes).
+let usersInflight: Promise<void> | null = null
 
 export function listOrgsForRole(role: Role): string[] {
   const seen = new Set<string>()

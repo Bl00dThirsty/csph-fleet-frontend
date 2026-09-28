@@ -1,5 +1,21 @@
-import { risk_scores, organizations, sites, client_sites, vehicles, users } from '@lpg/mock-data'
-import type { RiskEntityType, RiskLevel } from '@lpg/types'
+﻿import {
+  risk_scores,
+  organizations,
+  sites,
+  client_sites,
+  vehicles,
+  users,
+} from '@/lib/entity-data'
+import type {
+  AppUser,
+  ClientSite,
+  Organization,
+  RiskEntityType,
+  RiskLevel,
+  RiskScore,
+  Site,
+  Vehicle,
+} from '@lpg/types'
 
 export type { RiskEntityType, RiskLevel }
 
@@ -39,19 +55,34 @@ export const riskLevelOptions: readonly { label: string; value: RiskLevel }[] = 
   Object.keys(riskLevelLabels) as RiskLevel[]
 ).map((value) => ({ label: riskLevelLabels[value], value }))
 
-function entityName(entityType: RiskEntityType, entityId: string): string {
+export interface RiskScoreLookups {
+  organizations: Organization[]
+  sites: Site[]
+  clientSites: ClientSite[]
+  vehicles: Vehicle[]
+  users: AppUser[]
+}
+
+function entityName(
+  entityType: RiskEntityType,
+  entityId: string,
+  lookups: RiskScoreLookups,
+): string {
   switch (entityType) {
     case 'SITE':
     case 'CLIENTSITE':
-      return [...sites, ...client_sites].find((s) => s.id === entityId)?.name ?? entityId
+      return (
+        [...lookups.sites, ...lookups.clientSites].find((s) => s.id === entityId)?.name ??
+        entityId
+      )
     case 'VEHICLE':
-      return vehicles.find((v) => v.id === entityId)?.license_plate ?? entityId
+      return lookups.vehicles.find((v) => v.id === entityId)?.license_plate ?? entityId
     case 'LIVREUR': {
-      const user = users.find((u) => u.id === entityId)
+      const user = lookups.users.find((u) => u.id === entityId)
       return user ? `${user.first_name} ${user.last_name}`.trim() : entityId
     }
     default:
-      return organizations.find((o) => o.id === entityId)?.name ?? entityId
+      return lookups.organizations.find((o) => o.id === entityId)?.name ?? entityId
   }
 }
 
@@ -63,12 +94,21 @@ function detailText(details: Record<string, unknown> | null): string {
   return parts.join(', ')
 }
 
-export function getRiskScores(): RiskScoreView[] {
-  return risk_scores
+export function getRiskScores(
+  scores: RiskScore[] = risk_scores as RiskScore[],
+  lookups: RiskScoreLookups = {
+    organizations: organizations as Organization[],
+    sites: sites as Site[],
+    clientSites: client_sites as ClientSite[],
+    vehicles: vehicles as Vehicle[],
+    users: users as AppUser[],
+  },
+): RiskScoreView[] {
+  return scores
     .map((r) => ({
       id: r.id,
       entity_type: r.entity_type,
-      entity_name: entityName(r.entity_type, r.entity_id),
+      entity_name: entityName(r.entity_type, r.entity_id, lookups),
       score: r.score,
       level: r.level,
       level_label: riskLevelLabels[r.level],

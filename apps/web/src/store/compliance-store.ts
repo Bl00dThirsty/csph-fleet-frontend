@@ -1,9 +1,9 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import {
   declarations as mockDeclarations,
   reconciliations as mockReconciliations,
   redressements as mockRedressements,
-} from '@lpg/mock-data'
+} from '@/lib/entity-data'
 import type {
   Declaration,
   Reconciliation,

@@ -54,6 +54,12 @@ Rules:
 
 ## 4. Business rules & system conventions
 
+- **No mock/demo data, ever.** No fixture packages, no fake adapters, no
+  seeded rows in app code, no invented fallback values (quantities, counts,
+  coordinates, statuses). Views render empty until their store hydrates live
+  rows via `@lpg/api-client`. Test inputs live in test files, never in
+  shipped code.
+
 - **Settings-Driven, zero hardcoded thresholds.** Business rules never embed raw
   values. Geo confidence thresholds (`geo.confidence_*`), battery/offline alerts
   (`device.battery_critical_threshold`, `device.offline_alert_minutes`), SLA
@@ -61,9 +67,10 @@ Rules:
   (`reconciliation.volume_gap_tolerance_percent`), retention years
   (`audit.retention_years`), MFA enforcement (`mfa.enforced_for_roles`), GPS
   capture interval, and report expiry are read by `setting_key` from the
-  `settings` model (frontend fixture:
-  `packages/mock-data/src/seed/curated/10_system_config.json`, accessor
-  `getSettingNumber` in `packages/mock-data/src/settings.ts`).
+  `settings` model (accessor `getSettingNumber` in
+  `apps/web/src/lib/entity-data.ts`; live values arrive via `api.settings`,
+  every call site carries an explicit fallback — null is never invented into
+  a threshold).
 - **Role hierarchy:** SUPERADMIN > ADMIN > SUPERVISOR/AGENT/INTEGRATEUR >
   MARKETEUR/TRANSPORTEUR > LIVREUR. A user may only create subordinates at or
   below their own level (`HIERARCHY_LEVEL` / `canCreate` in `@lpg/permissions`).

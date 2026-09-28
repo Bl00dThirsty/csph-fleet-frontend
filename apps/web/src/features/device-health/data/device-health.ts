@@ -1,4 +1,4 @@
-import { getSettingNumber } from '@lpg/mock-data'
+﻿import { getSettingNumber } from '@/lib/entity-data'
 import { type DeviceType, type DeviceStatus } from '@lpg/types'
 
 export type { DeviceType, DeviceStatus }
@@ -21,7 +21,7 @@ export const deviceHealthTypeLabels: Record<DeviceType, string> = {
 }
 
 /**
- * device-health — stubbed. Live rows arrive via api.devices.list(). Until
+ * device-health â€” stubbed. Live rows arrive via api.devices.list(). Until
  * that store hydrates, `getDeviceHealth()` returns an empty list and the
  * page shows a "no attention devices" message.
  */
@@ -30,7 +30,7 @@ export function getDeviceHealth(): DeviceHealthView[] {
 }
 
 export function getDeviceHealthSummary() {
-  // batteryCriticalThreshold is no longer used here — kept as a no-op until
+  // batteryCriticalThreshold is no longer used here â€” kept as a no-op until
   // live device rows arrive and the real threshold is consulted per-device.
   const _threshold = getSettingNumber('device.battery_critical_threshold')
   void _threshold

@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type {
   DeviceStatus,
   Device as CuratedDevice,
@@ -62,11 +62,11 @@ function str(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
 }
 
-export function getGpsConfigs(): GpsConfigView[] {
-  const devices = curated.devices as CuratedDevice[]
-  const vehicles = curated.vehicles as CuratedVehicle[]
-  const orgs = curated.organizations as CuratedOrganization[]
-
+export function getGpsConfigs(
+  devices: CuratedDevice[] = curated.devices as CuratedDevice[],
+  vehicles: CuratedVehicle[] = curated.vehicles as CuratedVehicle[],
+  orgs: CuratedOrganization[] = curated.organizations as CuratedOrganization[],
+): GpsConfigView[] {
   return devices
     .filter((d) => d.device_type === 'GPS')
     .map((device) => {

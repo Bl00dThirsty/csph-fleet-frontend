@@ -1,4 +1,4 @@
-import { sites as curatedSites, client_sites as curatedClientSites, getSettingNumber } from '@lpg/mock-data'
+﻿import { sites as curatedSites, client_sites as curatedClientSites, getSettingNumber } from '@/lib/entity-data'
 import type { ClientSite, SiteStatus } from '@lpg/types'
 import type { PromotionThresholds } from '../lib/auto-promotion'
 import type { SiteRow } from '../lib/site-status-machine'
@@ -8,7 +8,7 @@ const FALLBACK_THRESHOLDS: PromotionThresholds = {
   flag: 30,
 }
 
-/** Settings-driven geo confidence thresholds (AGENTS.md §4). */
+/** Settings-driven geo confidence thresholds (AGENTS.md Â§4). */
 export function getPromotionThresholds(): PromotionThresholds {
   return {
     auto: getSettingNumber('geo.confidence_auto_verify_threshold') ?? FALLBACK_THRESHOLDS.auto,
