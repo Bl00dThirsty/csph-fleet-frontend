@@ -1,21 +1,19 @@
 {
   "name": "@lpg/mock-data",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
+  "description": "STUB — replaced by live @lpg/api-client (Spring Boot backend). Kept only so legacy imports still compile. Will be removed in a follow-up pass.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./seed/*": "./src/seed/*"
+    ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "echo 'mock-data stub: nothing to typecheck'",
+    "test": "echo 'mock-data stub: nothing to test'"
   },
   "dependencies": {
     "@lpg/types": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5.2.2"
   }
 }

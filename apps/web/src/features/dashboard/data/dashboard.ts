@@ -478,7 +478,7 @@ function buildCadence(
   })
 }
 
-function buildReserveSites() {
+function buildReserveSites(): DashboardReserveSite[] {
   const routeViews = getRouteTripsView()
 
   return Object.entries(reserveConfigBySiteId)
@@ -486,7 +486,29 @@ function buildReserveSites() {
       const site = sites.find((candidate) => candidate.id === siteId)
 
       if (!site) {
-        throw new Error(`Unknown reserve site "${siteId}"`)
+        // Live site data not yet hydrated (sites store empty during cold
+        // start). Render a minimal placeholder row so the dashboard does
+        // not crash; the live row replaces this once api.sites.list()
+        // resolves.
+        const fillPercent = round((config.reserveTM / config.capacityTM) * 100)
+        const status: DashboardReserveStatus =
+          fillPercent < 35 ? 'critical' : fillPercent < config.targetMinPercent ? 'watch' : 'healthy'
+        return {
+          siteId,
+          siteName: siteId,
+          city: '—',
+          operator: '—',
+          reserveTM: config.reserveTM,
+          capacityTM: config.capacityTM,
+          fillPercent,
+          targetMinPercent: config.targetMinPercent,
+          inboundTM: 0,
+          scheduledInboundTM: 0,
+          outboundTM: 0,
+          activeTripCount: 0,
+          daysOfCover: 0,
+          status,
+        } satisfies DashboardReserveSite
       }
 
       const outboundTM = routeViews

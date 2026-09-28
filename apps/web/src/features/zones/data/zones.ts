@@ -1,9 +1,12 @@
-import { curated } from '@lpg/mock-data'
-import type {
-  ClientSite as CuratedClientSite,
-  Region,
-  Site as CuratedSite,
-} from '@lpg/types'
+/**
+ * zones — stub. The /zones page used to enumerate the curated regions and
+ * count sites per region. Live region list now comes from `api.regions.list()`
+ * (via the regions-store), site counts from `api.sites.list()` and
+ * `api.clientSites.list()`. Pages that need populated data should call
+ * `buildZoneViews()` once those stores are hydrated.
+ */
+
+import type { Region } from '@lpg/types'
 
 export interface ZoneView {
   id: string
@@ -15,25 +18,10 @@ export interface ZoneView {
 }
 
 export function getZones(): ZoneView[] {
-  const sites = curated.sites as CuratedSite[]
-  const clientSites = curated.client_sites as CuratedClientSite[]
-
-  return curated.regions.map((region) => {
-    const code = region.code as Region
-    return {
-      id: region.id,
-      code,
-      name: region.name,
-      siteCount: sites.filter((s) => s.region === code).length,
-      clientSiteCount: clientSites.filter((s) => s.region === code).length,
-      region: code,
-    }
-  })
+  // Empty seed; live regions arrive via the regions store.
+  return []
 }
 
 export function getZoneOptions(): { label: string; value: string }[] {
-  return curated.regions.map((region) => ({
-    label: region.name,
-    value: region.code as Region,
-  }))
+  return []
 }

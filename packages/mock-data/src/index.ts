@@ -1,10 +1,11 @@
 /**
- * @lpg/mock-data — single source of truth for the entire system.
+ * @lpg/mock-data — STUB package.
  *
- * Data lives in `seed/curated/*.json` (snake_case, mirrors the production
- * Postgres schema). This package exposes only that curated data plus pure
- * analytics selectors. There is no second source of mock data.
+ * See ./curated.ts for the full explanation. This file re-exports the
+ * empty collections + types so legacy imports keep compiling.
  */
+
+import { curated } from './curated.ts'
 
 export { curated } from './curated.ts'
 export {
@@ -36,10 +37,10 @@ export {
   system_roles,
   permissions,
   regions,
-  rfid_tags,
   settings,
   reports,
   audit_logs,
+  rfid_tags,
   custom_roles,
   user_custom_roles,
 } from './entities.ts'
@@ -83,12 +84,24 @@ export type {
   UserCustomRole,
 } from '@lpg/types'
 
-export * from './analytics.ts'
+/**
+ * Settings helpers stay — they read from the (now empty) `curated.settings`. When
+ * the api.settings endpoint is wired in, swap these to fetch live values.
+ */
+export function getSetting(key: string): string | null {
+  const setting = curated.settings.find((s) => (s as { setting_key?: string }).setting_key === key)
+  const value = (setting as { setting_value?: string | number | null } | undefined)?.setting_value
+  return typeof value === 'string' ? value : value === undefined || value === null ? null : String(value)
+}
 
-export { getSetting, getSettingNumber } from './settings.ts'
+export function getSettingNumber(key: string): number | null {
+  const raw = getSetting(key)
+  if (raw === null || raw === '') return null
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : null
+}
 
-import { curated } from './curated.ts'
-
+/** Auth fixtures — empty. Backend now provisions auth via /users/with-auth. */
 export interface AuthFixture {
   id: string
   email: string
@@ -100,19 +113,7 @@ export interface AuthFixture {
   org_name: string
 }
 
-export const AUTH_FIXTURES: AuthFixture[] = curated.users.map((u) => {
-  const org = (curated.organizations as any[]).find((o) => o.id === u.org_id)
-  return {
-    id: u.id,
-    email: u.email,
-    first_name: u.first_name,
-    last_name: u.last_name,
-    system_role: u.system_role,
-    password: 'password',
-    org_id: u.org_id ?? '',
-    org_name: org?.name ?? 'Organisation inconnue',
-  }
-})
+export const AUTH_FIXTURES: AuthFixture[] = []
 
 export interface FakeProfile {
   id: string
@@ -124,12 +125,64 @@ export interface FakeProfile {
   org_name: string
 }
 
-export const fakeProfiles: FakeProfile[] = AUTH_FIXTURES.map((f) => ({
-  id: f.id,
-  email: f.email,
-  first_name: f.first_name,
-  last_name: f.last_name,
-  system_role: f.system_role,
-  org_id: f.org_id,
-  org_name: f.org_name,
-}))
+export const fakeProfiles: FakeProfile[] = []
+
+/**
+ * Analytics — stubbed. The legacy analytics module computed counts from the
+ * curated fixture collections; with those neutered to empty arrays there is
+ * nothing to compute, so the result is a zeroed-out shell. Live analytics
+ * arrives through `api.*.list()` once the corresponding store is hydrated.
+ */
+export interface Analytics {
+  organizations: { total: number; active: number }
+  users: { total: number; active: number }
+  sites: { total: number; active: number; verified: number }
+  tours: {
+    total: number
+    inFlight: number
+    planned: number
+    awaitingTransporter: number
+  }
+  devices: {
+    total: number
+    attention: { length: number }
+    byStatus: Record<string, number>
+  }
+  anomalies: { open: number; total: number }
+  reconciliations: { total: number; totalGap: number }
+  checkpoints: { total: number; missed: number }
+  traceability: { traceabilityRate: number; declaredVolume: number; trackedVolume: number }
+}
+
+export const buildAnalytics = (): Analytics => ({
+  organizations: { total: 0, active: 0 },
+  users: { total: 0, active: 0 },
+  sites: { total: 0, active: 0, verified: 0 },
+  tours: { total: 0, inFlight: 0, planned: 0, awaitingTransporter: 0 },
+  devices: { total: 0, attention: { length: 0 }, byStatus: {} },
+  anomalies: { open: 0, total: 0 },
+  reconciliations: { total: 0, totalGap: 0 },
+  checkpoints: { total: 0, missed: 0 },
+  traceability: { traceabilityRate: 0, declaredVolume: 0, trackedVolume: 0 },
+})
+
+export function resolveAnalyticsSelector<T>(_selector: () => T): T {
+  return undefined as unknown as T
+}
+
+/**
+ * Device stats — stubbed. Used by alerts/device-health. Live data flows
+ * through api.devices.list() and api.anomalies.list().
+ */
+export interface DeviceAttention {
+  id: string
+  serial: string
+  issue: string
+  battery?: number
+  lastSync?: string
+}
+export const deviceStats = (): { attention: DeviceAttention[]; total: number; byStatus: Record<string, number> } => ({
+  attention: [],
+  total: 0,
+  byStatus: {},
+})

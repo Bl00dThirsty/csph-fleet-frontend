@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { curated } from '@lpg/mock-data'
+import { api } from '@lpg/api-client'
 import type { ExecutionMode, TourneeType } from '@lpg/types'
 import {
   Dialog,
@@ -19,29 +19,106 @@ interface TourCreateDialogProps {
   onSuccess?: () => void
 }
 
+interface OrgOption {
+  id: string
+  name: string
+  type: string
+}
+
+interface VehicleOption {
+  id: string
+  type: string
+  license_plate: string
+  max_volume?: number | null
+  max_bottle_count?: number | null
+}
+
+interface DriverOption {
+  id: string
+  first_name: string
+  last_name: string
+  license_number?: string
+}
+
+interface LivreurOption {
+  id: string
+  first_name: string
+  last_name: string
+}
+
 export function TourCreateDialog({
   open,
   onOpenChange,
   onSuccess,
 }: TourCreateDialogProps) {
-  const defaultMarketer = curated.organizations.find((o) => o.type === 'MARKETEUR')?.id ?? 'org-0002-sctm-0000-000000000001'
-  const defaultTransporter = curated.organizations.find((o) => o.type === 'TRANSPORTEUR')?.id ?? 'org-0011-expressgpl--000000000001'
-
   const [tourCode, setTourCode] = useState(`TRP-${Math.floor(1000 + Math.random() * 9000)}`)
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('INTERNAL')
   const [cargoType, setCargoType] = useState<TourneeType>('VRAC')
-  const [quantity, setQuantity] = useState<number>(5) // 5 TM by default
-  const [marketerId, setMarketerId] = useState(defaultMarketer)
-  const [transporterId, setTransporterId] = useState(defaultTransporter)
-  const [vehicleId, setVehicleId] = useState(curated.vehicles.find((v) => v.type === 'VRAC')?.id ?? '')
-  const [driverId, setDriverId] = useState(curated.drivers[0]?.id ?? '')
-  const [livreurId, setLivreurId] = useState(curated.users.find((u) => u.system_role === 'LIVREUR')?.id ?? 'user-0010-sctm-livreur1')
+  const [quantity, setQuantity] = useState<number>(5)
+  const [marketerId, setMarketerId] = useState<string>('')
+  const [transporterId, setTransporterId] = useState<string>('')
+  const [vehicleId, setVehicleId] = useState<string>('')
+  const [driverId, setDriverId] = useState<string>('')
+  const [livreurId, setLivreurId] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
 
-  // Filter vehicles matching current cargo type
-  const availableVehicles = curated.vehicles.filter((v) => v.type === cargoType)
-  const availableMarketers = curated.organizations.filter((o) => o.type === 'MARKETEUR')
-  const availableTransporters = curated.organizations.filter((o) => o.type === 'TRANSPORTEUR')
+  // Live data fetched from the Spring backend. No curated.* mock-data
+  // fallback — the dialog starts empty until the lists arrive.
+  const [orgs, setOrgs] = useState<OrgOption[]>([])
+  const [vehicles, setVehicles] = useState<VehicleOption[]>([])
+  const [drivers, setDrivers] = useState<DriverOption[]>([])
+  const [livreurs, setLivreurs] = useState<LivreurOption[]>([])
+  const [dataError, setDataError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setDataError(null)
+    ;(async () => {
+      try {
+        const [orgRes, vehRes, drvRes, usrRes] = await Promise.all([
+          api.organizations.list({ size: 200 }),
+          api.vehicles.list({ size: 200 }),
+          // Drivers are a /users/ sub-collection on the backend.
+          api.users.list({ size: 200 }),
+          api.users.list({ size: 200 }),
+        ])
+        if (cancelled) return
+        setOrgs(((orgRes.data ?? []) as unknown) as OrgOption[])
+        setVehicles(((vehRes.data ?? []) as unknown) as VehicleOption[])
+        const drvRows = (((drvRes.data ?? []) as any[]) || []).filter(
+          (u) => u?.system_role === 'DRIVER',
+        ) as DriverOption[]
+        setDrivers(drvRows)
+        const livRows = (((usrRes.data ?? []) as any[]) || []).filter(
+          (u) => u?.system_role === 'LIVREUR',
+        ) as LivreurOption[]
+        setLivreurs(livRows)
+
+        // Defaults: pick the first matching option if the user hasn't set one.
+        setMarketerId((current) =>
+          current || ((orgRes.data ?? []) as OrgOption[]).find((o) => o.type === 'MARKETEUR')?.id || '',
+        )
+        setTransporterId((current) =>
+          current || ((orgRes.data ?? []) as OrgOption[]).find((o) => o.type === 'TRANSPORTEUR')?.id || '',
+        )
+        setVehicleId((current) => current || '')
+        setDriverId((current) => current || drvRows[0]?.id || '')
+        setLivreurId((current) => current || livRows[0]?.id || '')
+      } catch (err) {
+        if (!cancelled) return
+        const message = err instanceof Error ? err.message : 'Erreur réseau — listes indisponibles.'
+        setDataError(message)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
+  const availableVehicles = vehicles.filter((v) => v.type === cargoType)
+  const availableMarketers = orgs.filter((o) => o.type === 'MARKETEUR')
+  const availableTransporters = orgs.filter((o) => o.type === 'TRANSPORTEUR')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -56,13 +133,13 @@ export function TourCreateDialog({
         type: cargoType,
         requested_quantity: quantityInKgOrUnits,
         transporter_org_id: executionMode === 'EXTERNAL' ? transporterId : null,
-        vehicle_id: executionMode === 'INTERNAL' ? vehicleId : null,
-        driver_id: executionMode === 'INTERNAL' ? driverId : null,
-        livreur_user_id: executionMode === 'INTERNAL' ? livreurId : null,
+        vehicle_id: executionMode === 'INTERNAL' ? vehicleId || null : null,
+        driver_id: executionMode === 'INTERNAL' ? driverId || null : null,
+        livreur_user_id: executionMode === 'INTERNAL' ? livreurId || null : null,
       }
 
       await useToursStore.getState().createTourAsync(draft)
-      toast.success(`Tournée ${tourCode} créée avec succès`)
+      toast.success(`Tournée ${tourCode} créée en base`)
       onOpenChange(false)
       onSuccess?.()
     } catch (err) {
@@ -82,6 +159,12 @@ export function TourCreateDialog({
               Planifiez une nouvelle mission de distribution GPL vers les clients et dépôts.
             </DialogDescription>
           </DialogHeader>
+
+          {dataError && (
+            <div className='my-3 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300'>
+              Données de référence indisponibles : {dataError}. Vérifiez que l'API est accessible et réessayez.
+            </div>
+          )}
 
           <div className='grid gap-4 py-4'>
             {/* Code & Mode */}
@@ -127,7 +210,7 @@ export function TourCreateDialog({
                   onChange={(e) => {
                     const nextCargo = e.target.value as TourneeType
                     setCargoType(nextCargo)
-                    const matchingVeh = curated.vehicles.find((v) => v.type === nextCargo)
+                    const matchingVeh = availableVehicles.find((v) => v.type === nextCargo)
                     if (matchingVeh) setVehicleId(matchingVeh.id)
                   }}
                   className='w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm'
@@ -162,9 +245,10 @@ export function TourCreateDialog({
                 onChange={(e) => setMarketerId(e.target.value)}
                 className='w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm'
               >
+                <option value=''>— Sélectionner —</option>
                 {availableMarketers.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name} ({m.registration_number ?? m.id})
+                    {m.name} ({m.id})
                   </option>
                 ))}
               </select>
@@ -181,6 +265,7 @@ export function TourCreateDialog({
                   onChange={(e) => setTransporterId(e.target.value)}
                   className='w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm'
                 >
+                  <option value=''>— Sélectionner —</option>
                   {availableTransporters.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.id})
@@ -205,6 +290,7 @@ export function TourCreateDialog({
                     onChange={(e) => setVehicleId(e.target.value)}
                     className='w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm'
                   >
+                    <option value=''>— Sélectionner —</option>
                     {availableVehicles.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.license_plate} ({v.type} — {v.max_volume ? `${v.max_volume} m³` : `${v.max_bottle_count ?? ''} btl`})
@@ -223,9 +309,10 @@ export function TourCreateDialog({
                       onChange={(e) => setDriverId(e.target.value)}
                       className='w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm'
                     >
-                      {curated.drivers.map((d) => (
+                      <option value=''>— Sélectionner —</option>
+                      {drivers.map((d) => (
                         <option key={d.id} value={d.id}>
-                          {d.first_name} {d.last_name} ({d.license_number})
+                          {d.first_name} {d.last_name} {d.license_number ? `(${d.license_number})` : ''}
                         </option>
                       ))}
                     </select>
@@ -239,7 +326,8 @@ export function TourCreateDialog({
                       onChange={(e) => setLivreurId(e.target.value)}
                       className='w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm'
                     >
-                      {curated.users.filter((u) => u.system_role === 'LIVREUR').map((u) => (
+                      <option value=''>— Sélectionner —</option>
+                      {livreurs.map((u) => (
                         <option key={u.id} value={u.id}>
                           {u.first_name} {u.last_name}
                         </option>
@@ -260,7 +348,7 @@ export function TourCreateDialog({
             >
               Annuler
             </Button>
-            <Button type='submit' disabled={submitting}>
+            <Button type='submit' disabled={submitting || !marketerId}>
               {submitting ? 'Création...' : 'Créer la tournée'}
             </Button>
           </DialogFooter>

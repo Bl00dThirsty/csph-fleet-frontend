@@ -1,27 +1,33 @@
-import {
-  anomalies,
-  checkpoints,
-  client_sites,
-  curated,
-  delivery_tours,
-  drivers,
-  organizations,
-  scan_events,
-  users,
-  vehicles,
-} from '@lpg/mock-data'
 import type {
   Anomaly,
   Checkpoint,
+  ClientSite,
   DeliveryTour,
   ExecutionMode,
+  Organization,
+  ScanEvent,
   Setting,
   TourneeStatus,
   TourneeType,
+  Vehicle,
 } from '@lpg/types'
 import { sites, type Site } from '@/features/sites/data/sites'
 import { trucks, type Truck } from '@/features/trucks/data/trucks'
 import { resolveSlaThresholds, tourSlaFlags } from './tour-machine'
+import { useUsersStore } from '@/store/users-store'
+import { useToursStore } from '@/store/tours-store'
+
+// Live lookups: each helper reads from the relevant store. Until we have
+// dedicated useOrgsStore / useVehiclesStore, organisations and vehicles
+// default to empty arrays — the tour detail page passes the live rows in
+// via the enrichment options when available.
+const organizations: Organization[] = []
+const vehicles: Vehicle[] = []
+const client_sites: ClientSite[] = []
+const anomalies: Anomaly[] = []
+const checkpoints: Checkpoint[] = []
+const drivers: Array<{ id: string; first_name?: string; last_name?: string }> = []
+const scanEvents: ScanEvent[] = []
 
 export type { ExecutionMode, TourneeStatus }
 
@@ -289,7 +295,7 @@ export type TourActivity = RouteTripView & {
 }
 
 export interface TourEnrichOptions {
-  checkpoints?: typeof curated.checkpoints
+  checkpoints?: Checkpoint[]
   anomalies?: Anomaly[]
   settings?: Setting[]
   now?: Date
@@ -331,8 +337,9 @@ function orgName(id: string | null | undefined): string | null {
 
 function personName(id: string | null | undefined): string | null {
   if (!id) return null
-  const user = users.find((u) => u.id === id)
-  if (user) return `${user.first_name} ${user.last_name}`.trim()
+  // Live users are fetched into users-store; this lookup is the production path.
+  const live = useUsersStore.getState().users.find((u) => u.id === id)
+  if (live) return `${live.first_name ?? ''} ${live.last_name ?? ''}`.trim() || id
   const driver = drivers.find((d) => d.id === id)
   if (driver) return `${driver.first_name} ${driver.last_name}`.trim()
   return id
@@ -418,7 +425,7 @@ function buildTelemetry(
   origin: Site,
   destination: Site,
 ): RouteTelemetryPoint[] {
-  const scans = scan_events.filter((scan) =>
+  const scans = scanEvents.filter((scan) =>
     tourCheckpoints.some(
       (checkpoint) => checkpoint.id === scan.checkpoint_id,
     ),
@@ -765,9 +772,9 @@ function buildView(tourRaw: DeliveryTour, index: number, checkpointsSource?: typ
     completed_checkpoints: tourCheckpoints.filter((cp) => cp.status === 'COMPLETED').length,
     created_at: tour.created_at ?? '',
     transport_assigned_at: tour.transporter_assigned_at ?? null,
-    sla_transporter_no_ack: tourSlaFlags(tour, resolveSlaThresholds(curated.settings)).transporterNoAck,
-    sla_unassigned_too_long: tourSlaFlags(tour, resolveSlaThresholds(curated.settings)).unassignedTooLong,
-    anomaly_ids: curated.anomalies
+    sla_transporter_no_ack: tourSlaFlags(tour, resolveSlaThresholds([])).transporterNoAck,
+    sla_unassigned_too_long: tourSlaFlags(tour, resolveSlaThresholds([])).unassignedTooLong,
+    anomaly_ids: anomalies
       .filter(
         (a) =>
           a.entity_type === 'TOURNEE' &&
@@ -807,15 +814,17 @@ function slicePredicate(slice: TourSlice): (tour: DeliveryTour) => boolean {
 }
 
 export function getTourActivity(slice: TourSlice = 'ALL'): TourActivity[] {
-  return delivery_tours
+  const tours = useToursStore.getState().tours
+  return tours
     .filter(slicePredicate(slice))
     .map((tour, index) => buildView(tour, index))
 }
 
 export function getTourActivityById(id: string): TourActivity | undefined {
-  const index = delivery_tours.findIndex((tour) => tour.id === id)
+  const tours = useToursStore.getState().tours
+  const index = tours.findIndex((tour) => tour.id === id)
   if (index === -1) return undefined
-  return buildView(delivery_tours[index]!, index)
+  return buildView(tours[index]!, index)
 }
 
 export function toTourActivities(
@@ -838,7 +847,7 @@ export const buildTourSummary = buildRouteSummary
 export const getTourCustomerOptions = getRouteCustomerOptions
 
 export function getTourStops(id: string): string[] {
-  const tour = delivery_tours.find((t) => t.id === id)
+  const tour = useToursStore.getState().tours.find((t) => t.id === id)
   if (!tour) return []
   return checkpoints
     .filter((cp) => cp.tournee_id === tour.id)

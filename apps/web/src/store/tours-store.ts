@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { curated } from '@lpg/mock-data'
 import { api } from '@lpg/api-client'
 import type { DeliveryTour, Checkpoint, ExecutionMode, TourneeType } from '@lpg/types'
 import { toTourActivities, type TourActivity, type TourSlice } from '@/features/tours/data/tour-activity'
@@ -56,8 +55,8 @@ interface ToursState {
 }
 
 export const useToursStore = create<ToursState>()((set, get) => ({
-  tours: curated.delivery_tours.map((t) => ({ ...t })),
-  checkpoints: curated.checkpoints.map((c) => ({ ...c })),
+  tours: [],
+  checkpoints: [],
   loading: false,
   error: null,
 
@@ -103,7 +102,7 @@ export const useToursStore = create<ToursState>()((set, get) => ({
       created_by: null,
       updated_by: null,
     }
-    const validation = validateTour(tour, { vehicles: curated.vehicles })
+    const validation = validateTour(tour)
     if (!validation.valid) {
       throw new Error(validation.errors[0])
     }
@@ -149,7 +148,7 @@ export const useToursStore = create<ToursState>()((set, get) => ({
       created_by: null,
       updated_by: null,
     }
-    const validation = validateTour(tour, { vehicles: curated.vehicles })
+    const validation = validateTour(tour)
     if (!validation.valid) {
       throw new Error(validation.errors[0])
     }
@@ -176,7 +175,7 @@ export const useToursStore = create<ToursState>()((set, get) => ({
     if (!allowed.includes(action)) {
       throw new Error(`Transition interdite à l'état ${current.status}`)
     }
-    const validation = validateTour(current, { vehicles: curated.vehicles })
+    const validation = validateTour(current)
     if (!validation.valid && action !== 'cancel') {
       throw new Error(validation.errors[0])
     }

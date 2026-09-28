@@ -1,4 +1,10 @@
-import { deviceStats } from '@lpg/mock-data'
+/**
+ * alerts — stubbed. The legacy module derived infra alerts from
+ * deviceStats().attention + anomalies. With curated fixtures neutered both
+ * lists are empty; live alerts arrive from api.devices.list + api.anomalies.list
+ * once the corresponding stores hydrate.
+ */
+
 import { getAnomalies, severityLabels } from '@/features/anomalies/data/anomalies'
 
 export interface InfraAlert {
@@ -11,35 +17,27 @@ export interface InfraAlert {
 }
 
 export function getInfraAlerts(): InfraAlert[] {
-  const deviceAlerts: InfraAlert[] = deviceStats().attention.map((device) => ({
-    id: `device-${device.id}`,
-    title: `${device.serial} — ${device.issue}`,
-    source: 'DEVICE',
-    severity: 'CRITIQUE',
-    severityLabel: 'Critique',
-    detail: `Batterie : ${device.battery ?? '—'}% · Dernier sync : ${device.lastSync ?? '—'}`,
-  }))
-
   const anomalyAlerts: InfraAlert[] = getAnomalies('ALL')
     .filter((a) => a.status !== 'RESOLU')
     .slice(0, 6)
     .map((a) => ({
       id: `anomaly-${a.id}`,
-      title: a.type_label ?? a.type,
+      title: a.reference,
       source: 'ANOMALY',
       severity: a.severity,
       severityLabel: severityLabels[a.severity] ?? a.severity,
-      detail: a.assigned_agent ?? 'Non affectée',
+      detail: a.entity_name,
     }))
 
-  return [...deviceAlerts, ...anomalyAlerts]
+  return anomalyAlerts
 }
 
 export function getInfraAlertSummary() {
-  const alerts = getInfraAlerts()
+  const all = getInfraAlerts()
   return {
-    total: alerts.length,
-    devices: alerts.filter((a) => a.source === 'DEVICE').length,
-    anomalies: alerts.filter((a) => a.source === 'ANOMALY').length,
+    total: all.length,
+    critical: all.filter((a) => a.severity === 'CRITIQUE' || a.severity === 'CRITIQUEEXTREME').length,
+    degraded: all.filter((a) => a.severity === 'ELEVE').length,
+    warning: all.filter((a) => a.severity === 'MODERE').length,
   }
 }

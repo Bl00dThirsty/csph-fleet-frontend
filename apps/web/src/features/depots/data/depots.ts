@@ -35,8 +35,12 @@ function regionForDepot(orgId: string, idx: number): Region {
   const sites = curated.sites as CuratedSite[]
   const owningSite = sites.find((s) => s.org_id === orgId)
   if (owningSite) return owningSite.region
-  const regions = curated.regions.map((r) => r.code as Region)
-  return regions[idx % regions.length] ?? 'CENTRE'
+  // curated.regions is empty in the stub; fall back to a stable rotation.
+  const fallbackRegions: Region[] = [
+    'CENTRE', 'LITTORAL', 'ADAMAOUA', 'EST', 'EXTREMENORD',
+    'NORD', 'NORDOUEST', 'OUEST', 'SUD', 'SUDOUEST',
+  ]
+  return fallbackRegions[idx % fallbackRegions.length] ?? 'CENTRE'
 }
 
 export function getDepots(): DepotView[] {

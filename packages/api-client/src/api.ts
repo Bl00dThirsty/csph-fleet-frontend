@@ -43,6 +43,18 @@ export function createApi(adapter: ApiAdapter) {
     organizations: createResourceService<any>(adapter, 'organizations'),
     users: createResourceService<any>(adapter, 'users'),
     sites: createResourceService<any>(adapter, 'sites'),
+
+    // Users (extended): create-with-auth provisions a login account in the
+    // same atomic operation as the person row. The backend
+    // (csph-fleet-backend/user-service) maps this on
+    // POST /api/v1/users/with-auth and requires CreatePersonWithAuthRequest.
+    usersCreateWithAuth(body: any) {
+      return request<any>('/users/with-auth', {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    },
     clients: createResourceService<any>(adapter, 'clients'),
     clientSites: createResourceService<any>(adapter, 'client-sites'),
     vehicles: createResourceService<any>(adapter, 'vehicles'),
@@ -258,12 +270,18 @@ export function createApi(adapter: ApiAdapter) {
       return request<any>(`/tours/checkpoints/${id}/skip?reason=${encodeURIComponent(reason)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
     },
 
-    // Scan events
+    // Scan events (cylinder-service backend)
     recordScan(body: any) {
-      return request<any>('/scan-events', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
+      return request<any>('/scans', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
     },
     bulkScanUpload(body: { scans: any[] }) {
-      return request<any>('/scan-events/bulk', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
+      return request<any>('/scans/bulk', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
+    },
+    listScansForCheckpoint(checkpointId: string) {
+      return request<any>(`/scans?checkpointId=${encodeURIComponent(checkpointId)}`)
+    },
+    listScansForDriver(driverPersonId: string) {
+      return request<any>(`/scans?driverPersonId=${encodeURIComponent(driverPersonId)}`)
     },
 
     // Declarations / reconciliations / redressements

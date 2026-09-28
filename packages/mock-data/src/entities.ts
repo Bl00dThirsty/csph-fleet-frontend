@@ -1,15 +1,9 @@
 /**
  * Typed accessors for the curated fixture collection.
  *
- * `curated` from `@lpg/mock-data` indexes every entity by its schema name
- * (`regions`, `organizations`, `users`, …) with the right shape from
- * `@lpg/types`. This module re-exports the individual collections with
- * concrete element types so feature files never need `as any` casts.
- *
- * Schema entities that don't yet exist in the seed JSON (e.g. settings,
- * audit_logs, reports, rfid_tags, custom_roles) are NOT re-exported here.
- * Feature code consuming them must derive values programmatically — the
- * curated source of truth does not pretend to ship data it doesn't have.
+ * All collections are now empty arrays. Live data flows exclusively through
+ * `@lpg/api-client` (HTTP adapter → Spring Boot backend). The stores under
+ * `apps/web/src/store/` call `api.*.list()` to populate themselves on mount.
  */
 
 import { curated } from './curated.ts'
@@ -77,7 +71,7 @@ const user_mfa = curated.user_mfa as unknown as UserMfa[]
 const integration_auth = curated.integration_auth as unknown as IntegrationAuth[]
 const system_roles = curated.system_roles as SystemRole[]
 const permissions = curated.permissions as Permission[]
-const regions = curated.regions as RegionEntityRow[]
+const regions = curated.regions as unknown as RegionEntityRow[]
 const settings = curated.settings as Setting[]
 const reports = curated.reports as Report[]
 const audit_logs = curated.audit_logs as AuditLog[]

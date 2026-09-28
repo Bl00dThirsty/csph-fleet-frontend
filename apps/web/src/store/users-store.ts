@@ -1,7 +1,13 @@
 import { create } from 'zustand'
-import { api } from '@lpg/api-client'
-import { curated } from '@lpg/mock-data'
+import { api, type AuthUser } from '@lpg/api-client'
 import type { Role, User as CuratedUser } from '@lpg/types'
+
+/**
+ * App-side `User` shape. The backend (user-service) speaks camelCase
+ * PersonDTO; the HTTP adapter maps it via `mapBackendPersonToUser` to the
+ * snake_case shape this store expects. See http-adapter.ts:154.
+ */
+export type User = CuratedUser
 
 export type UserPatch = Partial<Pick<CuratedUser,
   | 'first_name'
@@ -16,12 +22,18 @@ export type UserPatch = Partial<Pick<CuratedUser,
   | 'is_active'
 >>
 
-interface CreateDriverPayload {
+/**
+ * Payload accepted by `createUser` and `createDriver`. Mirrors the Spring
+ * backend's CreatePersonRequest + CreatePersonWithAuthRequest DTOs
+ * (csph-fleet-backend/user-service/.../dto). The HTTP adapter accepts both
+ * shapes; `username`/`password` trigger the auth-provisioning endpoint
+ * (POST /users/with-auth) while omitting them falls back to the plain
+ * person endpoint (POST /users/).
+ */
+interface CreateUserPayload {
   firstName: string
   lastName: string
   email: string
-  username: string
-  password: string
   organizationId: string
   orgId: string
   primarySiteId?: string
@@ -29,142 +41,232 @@ interface CreateDriverPayload {
   jobCode?: string
   primaryPhone?: string
   roleName?: string
+  // Auth provisioning (optional — only required when the new user must log in)
+  username?: string
+  password?: string
 }
 
 interface UsersState {
   users: CuratedUser[]
   isLoading: boolean
   error: string | null
+  hasLoaded: boolean
   fetchUsers: () => Promise<void>
-  createUser: (user: Omit<CuratedUser, 'id' | 'created_at' | 'updated_at'>) => void
-  createDriver: (payload: CreateDriverPayload) => Promise<void>
-  updateUser: (id: string, patch: UserPatch) => void
-  setStatus: (id: string, active: boolean) => void
-  deleteUser: (id: string) => void
-  resetPassword: (id: string) => void
-  lockUntil: (id: string, iso?: string | null) => void
-  unlock: (id: string) => void
+  createUser: (user: Omit<CuratedUser, 'id' | 'created_at' | 'updated_at'> & { password?: string; username?: string }) => Promise<CuratedUser>
+  createDriver: (payload: CreateUserPayload) => Promise<CuratedUser>
+  updateUser: (id: string, patch: UserPatch) => Promise<CuratedUser>
+  setStatus: (id: string, active: boolean) => Promise<void>
+  deleteUser: (id: string) => Promise<void>
+  resetPassword: (id: string, newPassword?: string) => Promise<void>
+  lockUntil: (id: string, iso?: string | null) => Promise<void>
+  unlock: (id: string) => Promise<void>
 }
 
-export const useUsersStore = create<UsersState>()((set, get) => ({
-  users: (curated.users as CuratedUser[]).map((u) => ({ ...u })),
+function normalizePatch(p: Partial<CreateUserPayload>): Record<string, unknown> {
+  // Maps snake_case app state → camelCase backend DTO
+  const out: Record<string, unknown> = {}
+  if (p.firstName !== undefined) out.firstName = p.firstName
+  if (p.lastName !== undefined) out.lastName = p.lastName
+  if (p.email !== undefined) out.email = p.email
+  if (p.organizationId !== undefined) out.organizationId = p.organizationId
+  if (p.orgId !== undefined) out.orgId = p.orgId
+  if (p.primarySiteId !== undefined) out.primarySiteId = p.primarySiteId
+  if (p.title !== undefined) out.title = p.title
+  if (p.jobCode !== undefined) out.jobCode = p.jobCode
+  if (p.primaryPhone !== undefined) out.primaryPhone = p.primaryPhone
+  if (p.roleName !== undefined) out.roleName = p.roleName
+  if (p.username !== undefined) out.username = p.username
+  if (p.password !== undefined) out.password = p.password
+  return out
+}
+
+function extractError(err: unknown): string {
+  const anyErr = err as { response?: { data?: { message?: string; error?: { description?: string } } }; message?: string } | null
+  return (
+    anyErr?.response?.data?.message ??
+    anyErr?.response?.data?.error?.description ??
+    anyErr?.message ??
+    'Erreur réseau — vérifiez la liaison au service user-service.'
+  )
+}
+
+export const useUsersStore = create<UsersState>()((set) => ({
+  users: [],
   isLoading: false,
   error: null,
+  hasLoaded: false,
 
   async fetchUsers() {
     set({ isLoading: true, error: null })
     try {
       const result = await api.users.list()
-      if (result.data && result.data.length > 0) {
-        set({ users: result.data as CuratedUser[], isLoading: false })
-      } else {
-        // Fallback to local mock data if backend returns empty
-        set({ isLoading: false })
-      }
-    } catch {
-      // Fallback silently to existing mock data
-      set({ isLoading: false })
+      const list = (result.data ?? []) as CuratedUser[]
+      set({ users: list, isLoading: false, hasLoaded: true })
+    } catch (err) {
+      const message = extractError(err)
+      set({ isLoading: false, error: message, hasLoaded: true })
+      throw new Error(message)
     }
   },
 
-  createUser(user) {
-    const id = `user-${crypto.randomUUID().slice(0, 8)}`
-    const now = new Date().toISOString()
-    set((s) => ({
-      users: [{ ...user, id, created_at: now, updated_at: now } as CuratedUser, ...s.users],
-    }))
+  /**
+   * Creates a non-driver user (ADMIN / SUPERVISOR / AGENT / MARKETEUR /
+   * TRANSPORTEUR / INTEGRATEUR) via the backend.
+   *
+   * If `password` + `username` are provided, POST /users/with-auth is called
+   * to provision login credentials in the same atomic operation (used for
+   * livreurs). Otherwise the plain POST /users/ endpoint is used.
+   */
+  async createUser(input) {
+    set({ isLoading: true, error: null })
+    try {
+      const payload = normalizePatch({
+        firstName: input.first_name,
+        lastName: input.last_name,
+        email: input.email,
+        organizationId: input.org_id ?? '',
+        orgId: input.org_id ?? '',
+        primarySiteId: input.site_id,
+        title: input.job_title,
+        jobCode: (input as any).job_code,
+        primaryPhone: input.phone,
+        roleName: input.system_role,
+        username: input.username,
+        password: input.password,
+      })
+
+      // POST /users/with-auth when auth creds are provided, else POST /users/
+      const response = input.username && input.password
+        ? await api.usersCreateWithAuth({ ...payload, username: input.username, password: input.password })
+        : await api.users.create(payload as any)
+
+      const saved = response as CuratedUser
+      set((s) => ({
+        users: [saved, ...s.users.filter((u) => u.id !== saved.id)],
+        isLoading: false,
+      }))
+      return saved
+    } catch (err) {
+      const message = extractError(err)
+      set({ error: message, isLoading: false })
+      throw new Error(message)
+    }
   },
 
   /**
-   * Creates a driver (livreur) with authentication credentials via the backend.
-   * Calls POST /api/v1/persons/with-auth to create the person AND provision
+   * Creates a driver (livreur) with authentication credentials via the
+   * backend. Calls POST /users/with-auth to create the person AND provision
    * auth credentials in one atomic operation.
    */
   async createDriver(payload) {
     set({ isLoading: true, error: null })
     try {
       const response = await api.users.create({
-        // The with-auth endpoint expects these fields
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        email: payload.email,
-        username: payload.username,
-        password: payload.password,
-        organizationId: payload.organizationId,
-        orgId: payload.orgId,
-        primarySiteId: payload.primarySiteId,
-        title: payload.title,
+        ...normalizePatch(payload),
         jobCode: payload.jobCode || 'DRIVER',
-        primaryPhone: payload.primaryPhone,
         roleName: payload.roleName || 'DRIVER',
       } as any)
 
-      // Add the created user to local state
-      const now = new Date().toISOString()
-      const newUser: CuratedUser = {
-        id: (response as any)?.personId || `user-${crypto.randomUUID().slice(0, 8)}`,
-        first_name: payload.firstName,
-        last_name: payload.lastName,
-        email: payload.email,
-        system_role: 'LIVREUR' as any,
-        org_id: payload.organizationId,
-        is_active: true,
-        created_at: now,
-        updated_at: now,
-      } as CuratedUser
-
+      const saved = response as CuratedUser
       set((s) => ({
-        users: [newUser, ...s.users],
+        users: [saved, ...s.users.filter((u) => u.id !== saved.id)],
         isLoading: false,
       }))
-    } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || 'Failed to create driver'
+      return saved
+    } catch (err) {
+      const message = extractError(err)
       set({ error: message, isLoading: false })
       throw new Error(message)
     }
   },
 
-  updateUser(id, patch) {
+  async updateUser(id, patch) {
+    set({ isLoading: true, error: null })
+    try {
+      const body: Record<string, unknown> = {}
+      if (patch.first_name !== undefined) body.firstName = patch.first_name
+      if (patch.last_name !== undefined) body.lastName = patch.last_name
+      if (patch.email !== undefined) body.email = patch.email
+      if (patch.phone !== undefined) body.primaryPhone = patch.phone
+      if (patch.job_title !== undefined) body.title = patch.job_title
+      if (patch.org_id !== undefined) { body.organizationId = patch.org_id; body.orgId = patch.org_id }
+      if (patch.site_id !== undefined) body.primarySiteId = patch.site_id
+      if (patch.system_role !== undefined) body.roleName = patch.system_role
+      if (patch.is_active !== undefined) body.active = patch.is_active
+      const updated = await api.users.patch(id, body)
+      const saved = updated as CuratedUser
+      set((s) => ({
+        users: s.users.map((u) => (u.id === id ? saved : u)),
+        isLoading: false,
+      }))
+      return saved
+    } catch (err) {
+      const message = extractError(err)
+      set({ error: message, isLoading: false })
+      throw new Error(message)
+    }
+  },
+
+  async setStatus(id, active) {
+    try {
+      await api.users.patch(id, { active })
+    } catch (err) {
+      const message = extractError(err)
+      set({ error: message })
+      throw new Error(message)
+    }
     set((s) => ({
-      users: s.users.map((u) =>
-        u.id === id ? { ...u, ...patch } : u,
-      ),
+      users: s.users.map((u) => (u.id === id ? { ...u, is_active: active } : u)),
     }))
   },
 
-  setStatus(id, active) {
-    set((s) => ({
-      users: s.users.map((u) =>
-        u.id === id ? { ...u, is_active: active } : u,
-      ),
-    }))
-  },
-
-  deleteUser(id) {
+  async deleteUser(id) {
+    try {
+      await api.users.remove(id)
+    } catch (err) {
+      const message = extractError(err)
+      set({ error: message })
+      throw new Error(message)
+    }
     set((s) => ({
       users: s.users.filter((u) => u.id !== id),
     }))
   },
 
-  resetPassword(id) {
-    const u = get().users.find((x) => x.id === id)
-    if (!u) return
+  async resetPassword(id, newPassword) {
+    try {
+      await api.usersResetPassword(id, newPassword)
+    } catch (err) {
+      const message = extractError(err)
+      set({ error: message })
+      throw new Error(message)
+    }
   },
 
-  lockUntil(id, iso) {
+  async lockUntil(id, iso) {
     const stamp = iso ?? new Date(Date.now() + 15 * 60 * 1000).toISOString()
+    try {
+      await api.users.patch(id, { locked_until: stamp })
+    } catch (err) {
+      const message = extractError(err)
+      set({ error: message })
+      throw new Error(message)
+    }
     set((s) => ({
-      users: s.users.map((u) =>
-        u.id === id ? { ...u, locked_until: stamp } : u,
-      ),
+      users: s.users.map((u) => (u.id === id ? { ...u, locked_until: stamp } : u)),
     }))
   },
 
-  unlock(id) {
+  async unlock(id) {
+    try {
+      await api.users.patch(id, { locked_until: null })
+    } catch (err) {
+      const message = extractError(err)
+      set({ error: message })
+      throw new Error(message)
+    }
     set((s) => ({
-      users: s.users.map((u) =>
-        u.id === id ? { ...u, locked_until: null } : u,
-      ),
+      users: s.users.map((u) => (u.id === id ? { ...u, locked_until: null } : u)),
     }))
   },
 }))
@@ -176,3 +278,6 @@ export function listOrgsForRole(role: Role): string[] {
   }
   return [...seen]
 }
+
+// Type re-export so existing importers keep working
+export type { AuthUser }

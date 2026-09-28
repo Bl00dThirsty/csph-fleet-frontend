@@ -1,4 +1,10 @@
-import { buildAnalytics } from '@lpg/mock-data'
+/**
+ * system-health — stubbed. The legacy module derived service health from
+ * analytics counters computed against the curated fixtures. With those
+ * fixtures neutered, the live health picture will come from each backend
+ * service's `/actuator/health` endpoint (a follow-up pass). For now the
+ * health snapshot reports "DEGRADED" with no live metrics.
+ */
 
 export interface SystemServiceHealth {
   id: string
@@ -25,34 +31,34 @@ export const systemHealthLabels: Record<'OPERATIONAL' | 'DEGRADED' | 'CRITICAL',
 function toService(
   id: string,
   name: string,
-  ok: boolean,
+  status: 'OPERATIONAL' | 'DEGRADED' | 'CRITICAL',
   detail: string,
 ): SystemServiceHealth {
   return {
     id,
     name,
-    status: ok ? 'OPERATIONAL' : 'DEGRADED',
-    statusLabel: ok ? systemHealthLabels.OPERATIONAL : systemHealthLabels.DEGRADED,
+    status,
+    statusLabel: systemHealthLabels[status],
     detail,
   }
 }
 
 export function getSystemHealth(): SystemHealth {
-  const a = buildAnalytics()
   const services: SystemServiceHealth[] = [
-    toService('tours', 'Moteur de tournées', a.tours.inFlight >= 0, `${a.tours.total} tournées`),
-    toService('devices', 'Flotte & dispositifs', a.devices.attention.length === 0, `${a.devices.total} appareils`),
-    toService('scans', 'Réception des scans', a.scans.conflicts === 0, `${a.scans.total} scans`),
-    toService('anomalies', 'Détection d’anomalies', a.anomalies.open === 0, `${a.anomalies.open} ouvertes`),
-    toService('reconciliation', 'Réconciliation', a.reconciliations.totalGap === 0, `${a.reconciliations.totalGap} TM écart`),
+    toService('tours', 'Moteur de tournées', 'DEGRADED', 'chargement en cours'),
+    toService('devices', 'Flotte & dispositifs', 'DEGRADED', 'chargement en cours'),
+    toService('scans', 'Réception des scans', 'DEGRADED', 'chargement en cours'),
+    toService('anomalies', 'Détection d’anomalies', 'DEGRADED', 'chargement en cours'),
+    toService('reconciliation', 'Réconciliation', 'DEGRADED', 'chargement en cours'),
   ]
 
-  const critical = services.filter((s) => s.status === 'CRITICAL').length
-  const degraded = services.filter((s) => s.status === 'DEGRADED').length
-  const operational = services.filter((s) => s.status === 'OPERATIONAL').length
-  const overall = critical > 0 ? 'CRITICAL' : degraded > 0 ? 'DEGRADED' : 'OPERATIONAL'
-
-  return { overall, services, operational, degraded, critical }
+  return {
+    overall: 'DEGRADED',
+    services,
+    operational: 0,
+    degraded: services.length,
+    critical: 0,
+  }
 }
 
 export function getServiceHealthSummary() {

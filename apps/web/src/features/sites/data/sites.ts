@@ -1,4 +1,3 @@
-import { curated, organizations } from '@lpg/mock-data'
 import type { Site as CuratedSite, ClientSite } from '@lpg/types'
 
 export type SiteType =
@@ -99,41 +98,53 @@ function descriptionFor(
   return `${orgName} — ${typeLabel}, région ${REGION_LABELS[region] ?? region}.`
 }
 
-const orgByName = new Map(organizations.map((o) => [o.id, o.name]))
-
-const seedSites: readonly (CuratedSite | ClientSite)[] = [
-  ...curated.sites,
-  ...curated.client_sites,
-]
-
 function orgId(site: CuratedSite | ClientSite): string {
   return 'org_id' in site ? (site as CuratedSite).org_id : (site as ClientSite).client_org_id
 }
 
-export const sites: Site[] = seedSites.map((site) => {
-  const orgId_ = orgId(site)
-  const orgName = orgByName.get(orgId_) ?? orgId_
-  const type = viewTypeFromSeed(site, orgName)
-  const status = viewStatusFromSeed(
-    'status' in site ? (site as CuratedSite).status : undefined,
-    'is_active' in site ? (site as ClientSite).is_active : true,
-  )
-  const region = site.region
-  return {
-    id: site.id,
-    name: site.name,
-    type,
-    city: cityFromAddress('address' in site ? (site as CuratedSite | ClientSite).address : undefined),
-    region: REGION_LABELS[region] ?? region,
-    operator: orgName,
-    latitude: 'geo_point' in site ? ((site as CuratedSite).geo_point as [number, number])?.[1] ?? 0 : 0,
-    longitude: 'geo_point' in site ? ((site as CuratedSite).geo_point as [number, number])?.[0] ?? 0 : 0,
-    description: descriptionFor(orgName, type, region),
-    status,
-    isKeySite: type === 'filling-center' || type === 'scdp',
-  }
-})
+/**
+ * Synchronous accessor — accepts raw rows already fetched by the host page
+ * via `api.sites.list()` / `api.clientSites.list()`. Pages must trigger the
+ * fetch on mount and pass the result. The previous `curated.sites` +
+ * `curated.client_sites` seed has been removed.
+ */
+export function getSites(
+  raw: (CuratedSite | ClientSite)[] = [],
+  orgsById: Record<string, string> = {},
+): Site[] {
+  return raw.map((site) => {
+    const orgId_ = orgId(site)
+    const orgName = orgsById[orgId_] ?? orgId_
+    const type = viewTypeFromSeed(site, orgName)
+    const status = viewStatusFromSeed(
+      'status' in site ? (site as CuratedSite).status : undefined,
+      'is_active' in site ? (site as ClientSite).is_active : true,
+    )
+    const region = (site as any).region
+    const geo = (site as any).geo_point as [number, number] | undefined
+    return {
+      id: site.id,
+      name: site.name,
+      type,
+      city: cityFromAddress((site as any).address),
+      region: REGION_LABELS[region] ?? region,
+      operator: orgName,
+      latitude: geo?.[1] ?? 0,
+      longitude: geo?.[0] ?? 0,
+      description: descriptionFor(orgName, type, region),
+      status,
+      isKeySite: type === 'filling-center' || type === 'scdp',
+    }
+  })
+}
 
-export function getKeySites() {
-  return sites.filter((site) => site.isKeySite)
+/**
+ * Empty placeholder for backwards compatibility with sync consumers that
+ * imported the previous `sites` constant. Pages should call `getSites()`
+ * with fetched rows instead.
+ */
+export const sites: Site[] = []
+
+export function getKeySites(raw?: (CuratedSite | ClientSite)[], orgsById?: Record<string, string>): Site[] {
+  return getSites(raw, orgsById).filter((site) => site.isKeySite)
 }
