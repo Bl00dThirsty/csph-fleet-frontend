@@ -31,6 +31,19 @@ export function getUsersColumns({
       enableHiding: false,
     },
     {
+      accessorKey: 'username',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title='Identifiant (PDA)' />
+      ),
+      cell: ({ row }) => (
+        <span className='font-mono text-xs' title='Identifiant de connexion sur l’application mobile PDA'>
+          {row.original.username}
+        </span>
+      ),
+      meta: { label: 'Identifiant (PDA)' },
+      enableGrouping: true,
+    },
+    {
       accessorKey: 'email',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='E-mail' />

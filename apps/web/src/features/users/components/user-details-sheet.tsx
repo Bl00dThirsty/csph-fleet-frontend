@@ -39,6 +39,9 @@ export function UserDetailsSheet({
               {userStatusLabel(user.status)}
             </Badge>
           </div>
+          <p className='rounded-lg border bg-muted/40 px-3 py-2 font-mono text-sm'>
+            {user.username}
+          </p>
         </SheetHeader>
 
         <div className='space-y-4 px-4 pb-6'>
@@ -81,11 +84,25 @@ export function UserDetailsSheet({
                       </CardTitle>
                     </CardHeader>
                     <CardContent className='space-y-3'>
+                      <DetailLine
+                        label='Identifiant de connexion'
+                        value={user.username}
+                      />
                       <DetailLine label='ID' value={user.id} />
                       <DetailLine label='Nom complet' value={user.fullName} />
                       <DetailLine label='E-mail' value={user.email} />
                       <DetailLine label='Téléphone' value={user.phone || 'Non renseigné'} />
                       <DetailLine label='Fonction / Titre' value={user.job_title || 'Collaborateur'} />
+                      {user.job_code ? (
+                        <DetailLine label='Code fonction' value={user.job_code} />
+                      ) : null}
+                      {user.city ? <DetailLine label='Ville' value={user.city} /> : null}
+                      {user.language ? (
+                        <DetailLine label='Langue' value={user.language} />
+                      ) : null}
+                      {user.site_id ? (
+                        <DetailLine label='Site principal' value={user.site_id} />
+                      ) : null}
                       <DetailLine label='Organisation' value={user.orgName} />
                       <DetailLine label='Rôle' value={user.roleLabel} />
                     </CardContent>

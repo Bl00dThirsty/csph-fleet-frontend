@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { UserPlus, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -27,6 +27,14 @@ export function UsersPage() {
   const userOrgId = authUser?.org_id || 'org-0002-sctm-0000-000000000001'
 
   const allUsers = useUsersStore((s) => s.users)
+  const isLoading = useUsersStore((s) => s.isLoading)
+
+  // The store ships seeded with `curated.users`, so without this the page would
+  // never show a single real row from user-service. fetchUsers() replaces the
+  // seed and falls back to it if the API is unreachable.
+  useEffect(() => {
+    void useUsersStore.getState().fetchUsers()
+  }, [])
 
   const scopedUsers = useMemo(() => {
     if (isMarketer || isTransporter) {
@@ -86,7 +94,7 @@ export function UsersPage() {
               <div className='flex items-center gap-2'>
                 <h1 className='text-2xl font-bold tracking-tight'>{pageTitle}</h1>
                 <Badge variant='outline' className='ml-2 font-mono'>
-                  {view.length} collaborateur(s)
+                  {isLoading ? 'chargement…' : `${view.length} collaborateur(s)`}
                 </Badge>
               </div>
               <p className='text-xs text-muted-foreground sm:text-sm'>
