@@ -6,7 +6,7 @@ type AccessTokenGetter = () => string | null
 type UnauthorizedHandler = () => void
 
 function resolveBaseURL(override?: string): string {
-  let url = override || (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+  let url = override || (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:18080/api/v1'
   url = url.trim().replace(/\/+$/, '')
   if (url.includes('/v1/api')) {
     url = url.replace(/\/v1\/api/, '/api/v1')
@@ -52,7 +52,10 @@ const LIST_PATH_ALIASES: Record<string, { path: string; params?: Record<string, 
  */
 const PREFIX_PATH_ALIASES: Record<string, string> = {
   '/rfid-tags': '/rfid',
-  '/scan-events': '/scans',
+  // NOTE: '/scan-events' must stay on tour-service (POST /scan-events, POST
+  // /scan-events/bulk for the PDA). A previous '/scan-events' -> '/scans'
+  // alias rewrote bulk uploads to cylinder-service /scans/bulk (404).
+  // Cylinder reads live under '/scans' — call api.scans explicitly.
   '/transporter-contracts': '/contracts',
   '/pickup-requests': '/pickups',
   '/delivery-tours': '/tours',
