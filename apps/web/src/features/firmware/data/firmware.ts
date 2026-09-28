@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type { Device } from '@lpg/types'
 
 export type FirmwareStatus = 'CURRENT' | 'MIXED'
@@ -59,7 +59,7 @@ export function getFirmwareDevices(version: string): string[] {
 }
 
 export const FIRMWARE_STATUS_LABELS: Record<FirmwareStatus, string> = {
-  CURRENT: 'À jour',
+  CURRENT: 'Ã€ jour',
   MIXED: 'Mixte',
 }
 

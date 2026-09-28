@@ -1,10 +1,20 @@
-import { type Organization } from '@lpg/types'
+import { useEffect, useState } from 'react'
+import { type Organization, type Vehicle } from '@lpg/types'
 import { getTransporterTrucks } from '@/features/transporters/data/transporter-trucks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 export function TransporterTrucksList({ transporter }: { transporter: Organization }) {
-  const trucks = getTransporterTrucks(transporter.id)
+  const [trucks, setTrucks] = useState<Vehicle[]>([])
+  useEffect(() => {
+    let cancelled = false
+    getTransporterTrucks(transporter.id).then((rows) => {
+      if (!cancelled) setTrucks(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [transporter.id])
 
   return (
     <Card>
@@ -21,14 +31,14 @@ export function TransporterTrucksList({ transporter }: { transporter: Organizati
                   <p className='font-medium text-sm font-mono'>{truck.license_plate}</p>
                   <p className='text-xs text-muted-foreground'>{truck.type}</p>
                 </div>
-                <Badge variant={truck.is_active ? 'default' : 'secondary'} className='shrink-0'>
-                  {truck.is_active ? 'Disponible' : 'Inactif'}
+                <Badge variant={(truck as any).is_active ? 'default' : 'secondary'} className='shrink-0'>
+                  {(truck as any).is_active ? 'Disponible' : 'Inactif'}
                 </Badge>
               </div>
               <div className='mt-2 space-y-1 text-xs'>
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground'>Capacité</span>
-                  <span className='font-medium'>{truck.max_volume ?? 0} TM</span>
+                  <span className='font-medium'>{(truck as any).max_volume ?? 0} TM</span>
                 </div>
               </div>
             </div>
@@ -56,10 +66,10 @@ export function TransporterTrucksList({ transporter }: { transporter: Organizati
                 <tr key={truck.id} className='border-t'>
                   <td className='p-3 font-mono font-medium whitespace-nowrap'>{truck.license_plate}</td>
                   <td className='p-3'>{truck.type}</td>
-                  <td className='p-3 font-medium whitespace-nowrap'>{truck.max_volume ?? 0} TM</td>
+                  <td className='p-3 font-medium whitespace-nowrap'>{(truck as any).max_volume ?? 0} TM</td>
                   <td className='p-3'>
-                    <Badge variant={truck.is_active ? 'default' : 'secondary'}>
-                      {truck.is_active ? 'Disponible' : 'Inactif'}
+                    <Badge variant={(truck as any).is_active ? 'default' : 'secondary'}>
+                      {(truck as any).is_active ? 'Disponible' : 'Inactif'}
                     </Badge>
                   </td>
                 </tr>

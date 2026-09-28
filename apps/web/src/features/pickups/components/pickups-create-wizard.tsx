@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { ArrowLeft, ArrowRight, Check, Truck } from 'lucide-react'
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@lpg/ui'
-import { curated, organizations, sites } from '@lpg/mock-data'
+import { curated, organizations, sites } from '@/lib/entity-data'
 import { useAuthStore } from '@/store/auth-store'
 import { usePickupsStore } from '@/store/pickups-store'
 import type { PickupRequest, VehicleType } from '@lpg/types'
@@ -97,11 +97,11 @@ export function PickupsCreateWizard({
         requested_quantity: values.requested_quantity,
       }, selectedVehicles)
       onCreated(created, selectedVehicles)
-      toast.success(`Requête ${created.reference ?? created.id} créée en brouillon`)
+      toast.success(`RequÃªte ${created.reference ?? created.id} crÃ©Ã©e en brouillon`)
       onOpenChange(false)
       reset()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Impossible de créer la requête')
+      toast.error(err instanceof Error ? err.message : 'Impossible de crÃ©er la requÃªte')
     } finally {
       setSubmitting(false)
     }
@@ -128,7 +128,7 @@ export function PickupsCreateWizard({
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>
-            {step === 1 ? 'Nouvelle requête de ramassage' : 'Sélection des véhicules'}
+            {step === 1 ? 'Nouvelle requÃªte de ramassage' : 'SÃ©lection des vÃ©hicules'}
           </DialogTitle>
         </DialogHeader>
 
@@ -148,7 +148,7 @@ export function PickupsCreateWizard({
                 </select>
               </label>
               <label className='block flex-1 text-sm'>
-                <span>Quantité</span>
+                <span>QuantitÃ©</span>
                 <input
                   type='number'
                   min={0}
@@ -184,7 +184,7 @@ export function PickupsCreateWizard({
                   set('destination_site_id', '')
                 }}
               >
-                <option value=''>— Sélectionner —</option>
+                <option value=''>â€” SÃ©lectionner â€”</option>
                 {sourceOptions.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -198,7 +198,7 @@ export function PickupsCreateWizard({
                 value={values.destination_site_id}
                 onChange={(e) => set('destination_site_id', e.target.value)}
               >
-                <option value=''>— Sélectionner —</option>
+                <option value=''>â€” SÃ©lectionner â€”</option>
                 {destOptions.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -216,14 +216,14 @@ export function PickupsCreateWizard({
         ) : (
           <div className='space-y-4 py-2'>
             <p className='text-sm text-muted-foreground'>
-              Véhicules <strong>{TYPE_LABELS[values.type]}</strong> du marketeur capables de
+              VÃ©hicules <strong>{TYPE_LABELS[values.type]}</strong> du marketeur capables de
               transporter <strong>{values.requested_quantity}</strong>{' '}
               {values.type === 'VRAC' ? 'TM' : 'btl'}.
             </p>
 
             {recommendations.length === 0 ? (
               <div className='rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200'>
-                Aucun véhicule de capacité suffisante trouvé pour cette quantité.
+                Aucun vÃ©hicule de capacitÃ© suffisante trouvÃ© pour cette quantitÃ©.
               </div>
             ) : (
               <ul className='space-y-2'>
@@ -244,7 +244,7 @@ export function PickupsCreateWizard({
                       </span>
                       <span className='flex items-center gap-3 text-xs text-muted-foreground'>
                         <span>
-                          Capacité {values.type === 'VRAC'
+                          CapacitÃ© {values.type === 'VRAC'
                             ? `${vehicle.max_volume} TM`
                             : `${vehicle.max_bottle_count} btl`}
                         </span>
@@ -284,7 +284,7 @@ export function PickupsCreateWizard({
               </Button>
             ) : (
               <Button onClick={submit} disabled={submitting || selectedVehicles.length === 0} className='gap-1'>
-                Créer la requête
+                CrÃ©er la requÃªte
               </Button>
             )}
           </div>

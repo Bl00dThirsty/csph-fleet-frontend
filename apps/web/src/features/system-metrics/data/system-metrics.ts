@@ -1,4 +1,8 @@
-import { buildAnalytics } from '@lpg/mock-data'
+/**
+ * system-metrics — stubbed. Live metrics now arrive via the system-metrics
+ * store which is hydrated from api.*.list() calls. Until each backend
+ * analytics endpoint is wired, the cards render zero values.
+ */
 
 export interface MetricCard {
   id: string
@@ -9,66 +13,27 @@ export interface MetricCard {
 }
 
 export function getSystemMetrics(): MetricCard[] {
-  const a = buildAnalytics()
-  const traceability = a.traceability.traceabilityRate
   return [
-    {
-      id: 'tours',
-      label: 'Tournées',
-      value: String(a.tours.total),
-      unit: 'total',
-      hint: `${a.tours.inFlight} en cours`,
-    },
-    {
-      id: 'scans',
-      label: 'Scans',
-      value: String(a.scans.total),
-      unit: 'événements',
-      hint: `${a.scans.conflicts} conflits`,
-    },
-    {
-      id: 'devices',
-      label: 'Appareils',
-      value: String(a.devices.total),
-      unit: 'dispositifs',
-      hint: `${a.devices.attention.length} à surveiller`,
-    },
-    {
-      id: 'traceability',
-      label: 'Traçabilité',
-      value: `${Math.round(traceability)}%`,
-      unit: 'volume',
-      hint: 'déclaré vs suivi',
-    },
-    {
-      id: 'anomalies',
-      label: 'Anomalies',
-      value: String(a.anomalies.open),
-      unit: 'ouvertes',
-      hint: `${a.anomalies.total} au total`,
-    },
-    {
-      id: 'gap',
-      label: 'Écart volume',
-      value: String(Math.round(a.reconciliations.totalGap)),
-      unit: 'TM',
-      hint: `${a.reconciliations.total} réconciliations`,
-    },
+    { id: 'tours', label: 'Tournées', value: '—', unit: 'total', hint: 'chargement' },
+    { id: 'scans', label: 'Scans', value: '—', unit: 'événements', hint: 'chargement' },
+    { id: 'devices', label: 'Appareils', value: '—', unit: 'dispositifs', hint: 'chargement' },
+    { id: 'traceability', label: 'Traçabilité', value: '—%', unit: 'volume', hint: 'chargement' },
+    { id: 'anomalies', label: 'Anomalies', value: '—', unit: 'ouvertes', hint: 'chargement' },
+    { id: 'gap', label: 'Écart volume', value: '—', unit: 'TM', hint: 'chargement' },
   ]
 }
 
-export function getMetricGroups() {
-  const a = buildAnalytics()
+export function getMetricGroups(): { operations: Array<{ key: string; value: number }>; health: Array<{ key: string; value: number }> } {
   return {
     operations: [
-      { key: 'tournées', value: a.tours.total },
-      { key: 'scans', value: a.scans.total },
-      { key: 'déclarations suivies', value: a.traceability.trackedVolume },
+      { key: 'tournées', value: 0 },
+      { key: 'scans', value: 0 },
+      { key: 'déclarations suivies', value: 0 },
     ],
     health: [
-      { key: 'appareils', value: a.devices.total },
-      { key: 'anomalies ouvertes', value: a.anomalies.open },
-      { key: 'écart TM', value: Math.round(a.reconciliations.totalGap) },
+      { key: 'appareils', value: 0 },
+      { key: 'anomalies ouvertes', value: 0 },
+      { key: 'écart TM', value: 0 },
     ],
   }
 }

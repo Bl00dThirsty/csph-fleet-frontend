@@ -1,9 +1,10 @@
-import { delivery_tours, drivers, organizations } from '@lpg/mock-data'
 import type {
   Driver,
   Organization,
   TourneeStatus,
 } from '@lpg/types'
+import { useUsersStore } from '@/store/users-store'
+import { useToursStore } from '@/store/tours-store'
 
 export type DriverStatus = 'ACTIVE' | 'INACTIVE'
 
@@ -45,11 +46,8 @@ const activeTourStatuses: readonly TourneeStatus[] = [
   'CHECKPOINTACTIVE',
 ]
 
-const orgById = new Map(organizations.map((org) => [org.id, org]))
-
-function orgName(orgId: string): string {
-  const org = orgById.get(orgId)
-  return org?.name ?? '—'
+function orgName(orgById: Map<string, Organization>, orgId: string): string {
+  return orgById.get(orgId)?.name ?? '—'
 }
 
 function buildTourAggregates(): ReadonlyMap<
@@ -60,8 +58,9 @@ function buildTourAggregates(): ReadonlyMap<
     string,
     { vehicles: Set<string>; active: number; total: number; lastUpdatedAt: string }
   >()
+  const tours = useToursStore.getState().tours
 
-  for (const tour of delivery_tours) {
+  for (const tour of tours) {
     if (!tour.driver_id) continue
 
     let entry = aggregates.get(tour.driver_id)
@@ -88,11 +87,12 @@ function buildTourAggregates(): ReadonlyMap<
   return aggregates
 }
 
-const tourAggregates = buildTourAggregates()
-
-function buildView(driver: Driver): DriverView {
-  const aggregates = tourAggregates.get(driver.id)
-
+function buildView(
+  driver: Driver,
+  orgById: Map<string, Organization>,
+  aggregates: ReturnType<typeof buildTourAggregates>,
+): DriverView {
+  const agg = aggregates.get(driver.id)
   return {
     id: driver.id,
     first_name: driver.first_name,
@@ -100,27 +100,44 @@ function buildView(driver: Driver): DriverView {
     full_name: `${driver.first_name} ${driver.last_name}`.trim(),
     license_number: driver.license_number ?? '—',
     org_id: driver.org_id,
-    org_name: orgName(driver.org_id),
+    org_name: orgName(orgById, driver.org_id),
     is_active: driver.is_active,
-    assigned_vehicle_count: aggregates?.vehicles.size ?? 0,
-    active_tour_count: aggregates?.active ?? 0,
-    total_tour_count: aggregates?.total ?? 0,
+    assigned_vehicle_count: agg?.vehicles.size ?? 0,
+    active_tour_count: agg?.active ?? 0,
+    total_tour_count: agg?.total ?? 0,
     last_activity:
-      aggregates?.lastUpdatedAt ??
+      agg?.lastUpdatedAt ??
       driver.updated_at ??
       driver.created_at ??
       '',
   }
 }
 
-export function getDriversView(): DriverView[] {
-  return (drivers as Driver[]).map(buildView)
+/**
+ * Synchronous accessor — derives drivers from the live users-store filtered by
+ * `system_role === 'DRIVER'`. Pages that want a populated list should call
+ * `useUsersStore.getState().fetchUsers()` + `useToursStore.getState().fetchTours()`
+ * on mount.
+ */
+export function getDriversView(
+  orgs: Organization[] = [],
+): DriverView[] {
+  const orgById = new Map(orgs.map((o) => [o.id, o]))
+  const aggregates = buildTourAggregates()
+  const drivers = useUsersStore
+    .getState()
+    .users
+    .filter((u) => (u as any).system_role === 'DRIVER' || (u as any).role_codes?.includes('DRIVER'))
+    .map((u) => u as unknown as Driver)
+  return drivers.map((d) => buildView(d, orgById, aggregates))
 }
 
-export function getDriverById(id: string): DriverView | undefined {
-  return (drivers as Driver[]).map(buildView).find((driver) => driver.id === id)
+export function getDriverById(id: string, orgs: Organization[] = []): DriverView | undefined {
+  return getDriversView(orgs).find((driver) => driver.id === id)
 }
 
-export { drivers, organizations }
+// Backwards-compatible empty seeds.
+export const drivers: Driver[] = []
+export const organizations: Organization[] = []
 
 export type { Driver, Organization }

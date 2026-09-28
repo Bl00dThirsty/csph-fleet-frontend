@@ -1,4 +1,4 @@
-import { pickup_requests, sites, client_sites, organizations } from '@lpg/mock-data'
+﻿import { pickup_requests, sites, client_sites, organizations } from '@/lib/entity-data'
 import type { PickupStatus } from '@lpg/types'
 
 export type { PickupStatus }
@@ -21,10 +21,10 @@ export interface Pickup {
 
 export const pickupStatusLabels: Record<PickupStatus, string> = {
   DRAFT: 'Brouillon',
-  VALIDATED: 'Validée',
+  VALIDATED: 'ValidÃ©e',
   INPROGRESS: 'En cours',
-  COMPLETED: 'Terminée',
-  CANCELLED: 'Annulée',
+  COMPLETED: 'TerminÃ©e',
+  CANCELLED: 'AnnulÃ©e',
 }
 
 export const pickupStatusOptions: readonly { label: string; value: PickupStatus }[] = (

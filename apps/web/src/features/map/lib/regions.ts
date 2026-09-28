@@ -1,6 +1,18 @@
-import { curated } from '@lpg/mock-data'
 import type { Region } from '@lpg/types'
 import { getZones } from '../../zones/data/zones'
+
+const REGION_LABELS: Record<Region, string> = {
+  ADAMAOUA: 'Adamaoua',
+  CENTRE: 'Centre',
+  EST: 'Est',
+  EXTREMENORD: 'Extrême-Nord',
+  LITTORAL: 'Littoral',
+  NORD: 'Nord',
+  NORDOUEST: 'Nord-Ouest',
+  OUEST: 'Ouest',
+  SUD: 'Sud',
+  SUDOUEST: 'Sud-Ouest',
+}
 
 export interface RegionSummary {
   code: Region
@@ -13,33 +25,23 @@ export interface RegionSummary {
 }
 
 export function getRegionSummary(code: Region): RegionSummary {
-  const region = curated.regions.find((r) => r.code === code)
-  const zone = getZones().find((z) => z.region === code)!
-  const points = [
-    ...curated.sites.filter((s) => s.region === code && s.geo_point),
-    ...curated.client_sites.filter((cs) => cs.region === code && cs.geo_point),
-  ].map((s) => {
-    const geo = s.geo_point as [number, number]
-    return { lng: geo[0], lat: geo[1] }
-  })
-  const centroid =
-    points.length === 0
-      ? { lng: 0, lat: 0 }
-      : {
-          lng: points.reduce((a, p) => a + p.lng, 0) / points.length,
-          lat: points.reduce((a, p) => a + p.lat, 0) / points.length,
-        }
+  const zone = getZones().find((z) => z.region === code)
+  // curated seed is empty — centroid / site points are no live either.
+  // Map view computes them from api.sites.list / api.clientSites.list.
   return {
     code,
-    name: region?.name ?? code,
-    siteCount: zone.siteCount,
-    clientSiteCount: zone.clientSiteCount,
+    name: REGION_LABELS[code] ?? code,
+    siteCount: zone?.siteCount ?? 0,
+    clientSiteCount: zone?.clientSiteCount ?? 0,
     anomalyCount: 0,
-    longitude: centroid.lng,
-    latitude: centroid.lat,
+    longitude: 0,
+    latitude: 0,
   }
 }
 
 export function regionsForMap(): readonly RegionSummary[] {
-  return curated.regions.map((r) => getRegionSummary(r.code as Region))
+  // No fixture regions: the live list comes from api.regions.list(), wired via
+  // the regions-store. Pages that need a populated list should call
+  // regionsForMap() once the store is hydrated.
+  return []
 }

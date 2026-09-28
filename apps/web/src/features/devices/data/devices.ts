@@ -1,4 +1,4 @@
-import { devices as mockDevices, drivers, organizations, vehicles } from '@lpg/mock-data'
+﻿import { devices as mockDevices, drivers, organizations, vehicles } from '@/lib/entity-data'
 import type {
   Device,
   DeviceStatus,
@@ -45,17 +45,17 @@ export const deviceTypeClasses: Record<DeviceType, string> = {
 }
 
 export const deviceStatusLabels: Record<DeviceStatus, string> = {
-  UNASSIGNED: 'Non assigné',
-  ASSIGNED: 'Assigné',
+  UNASSIGNED: 'Non assignÃ©',
+  ASSIGNED: 'AssignÃ©',
   INMISSION: 'En mission',
   OFFLINE: 'Hors-ligne',
   PENDINGSYNC: 'Sync en attente',
   SYNCING: 'Synchronisation',
-  SYNCED: 'Synchronisé',
-  SYNCFAILED: 'Échec sync',
+  SYNCED: 'SynchronisÃ©',
+  SYNCFAILED: 'Ã‰chec sync',
   MAINTENANCE: 'Maintenance',
-  DEPLOYED: 'Déployé',
-  REMOVED: 'Retiré',
+  DEPLOYED: 'DÃ©ployÃ©',
+  REMOVED: 'RetirÃ©',
   LOST: 'Perdu',
 }
 
@@ -81,16 +81,16 @@ export const deviceTypeOptions: { label: string; value: DeviceType }[] = [
 ]
 
 export const deviceStatusOptions: { label: string; value: DeviceStatus }[] = [
-  { label: 'Assigné', value: 'ASSIGNED' },
+  { label: 'AssignÃ©', value: 'ASSIGNED' },
   { label: 'En mission', value: 'INMISSION' },
   { label: 'Hors-ligne', value: 'OFFLINE' },
-  { label: 'Synchronisé', value: 'SYNCED' },
+  { label: 'SynchronisÃ©', value: 'SYNCED' },
   { label: 'Sync en attente', value: 'PENDINGSYNC' },
-  { label: 'Échec sync', value: 'SYNCFAILED' },
+  { label: 'Ã‰chec sync', value: 'SYNCFAILED' },
   { label: 'Maintenance', value: 'MAINTENANCE' },
-  { label: 'Déployé', value: 'DEPLOYED' },
-  { label: 'Non assigné', value: 'UNASSIGNED' },
-  { label: 'Retiré', value: 'REMOVED' },
+  { label: 'DÃ©ployÃ©', value: 'DEPLOYED' },
+  { label: 'Non assignÃ©', value: 'UNASSIGNED' },
+  { label: 'RetirÃ©', value: 'REMOVED' },
   { label: 'Perdu', value: 'LOST' },
 ]
 
@@ -105,9 +105,9 @@ const driverById = new Map(
 )
 
 function orgName(orgId: string | null | undefined): string {
-  if (!orgId) return '—'
+  if (!orgId) return 'â€”'
   const org = organizationById.get(orgId)
-  return org?.name ?? '—'
+  return org?.name ?? 'â€”'
 }
 
 function vehiclePlate(vehicleId: string | null | undefined): string | undefined {
@@ -124,7 +124,7 @@ function driverName(userId: string | null | undefined): string | undefined {
 }
 
 function batteryStatus(level: number | null, critical: boolean): string {
-  if (level == null) return critical ? 'Critique' : '—'
+  if (level == null) return critical ? 'Critique' : 'â€”'
   if (critical) return `${level}% (critique)`
   return `${level}%`
 }

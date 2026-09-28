@@ -1,10 +1,19 @@
+import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@lpg/ui'
-import { curated } from '@lpg/mock-data'
+import { api } from '@lpg/api-client'
 
 export const Route = createFileRoute('/_authenticated/settings/system')({
   component: SystemSettingsPage,
 })
+
+interface SettingRow {
+  setting_key: string
+  setting_value: string
+  value_type: string
+  category?: string
+  description?: string
+}
 
 function formatValue(setting: { value_type: string; setting_value: string }) {
   if (setting.value_type === 'BOOLEAN') {
@@ -14,7 +23,20 @@ function formatValue(setting: { value_type: string; setting_value: string }) {
 }
 
 function SystemSettingsPage() {
-  const settings = curated.settings
+  const [settings, setSettings] = useState<SettingRow[]>([])
+  useEffect(() => {
+    let cancelled = false
+    api.settings
+      .list({ size: 500 })
+      .then((res) => {
+        if (cancelled) return
+        setSettings(((res.data ?? []) as unknown) as SettingRow[])
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div className='mx-auto max-w-2xl p-6 flex flex-col gap-6'>
@@ -34,15 +56,17 @@ function SystemSettingsPage() {
       ) : (
         <div className='grid gap-3'>
           {settings.map((setting) => (
-            <Card key={setting.id}>
+            <Card key={setting.setting_key}>
               <CardHeader className='pb-2'>
                 <div className='flex items-center gap-2'>
                   <CardTitle className='font-mono text-sm'>
                     {setting.setting_key}
                   </CardTitle>
-                  <span className='rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground'>
-                    {setting.category}
-                  </span>
+                  {setting.category && (
+                    <span className='rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground'>
+                      {setting.category}
+                    </span>
+                  )}
                 </div>
                 {setting.description && (
                   <CardDescription className='text-sm'>

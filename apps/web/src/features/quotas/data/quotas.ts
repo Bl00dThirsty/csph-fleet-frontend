@@ -1,5 +1,5 @@
-import { delivery_tours, declarations, organizations } from '@lpg/mock-data'
-import type { Declaration, DeliveryTour } from '@lpg/types'
+﻿import { delivery_tours, declarations, organizations } from '@/lib/entity-data'
+import type { Declaration, DeliveryTour, Organization } from '@lpg/types'
 
 export interface MarketeurQuotaView {
   marketeurId: string
@@ -9,17 +9,19 @@ export interface MarketeurQuotaView {
   usageRate: number
 }
 
-function orgName(id: string): string {
-  return organizations.find((o) => o.id === id)?.name ?? id
+function orgName(id: string, orgs: readonly Organization[] = organizations): string {
+  return orgs.find((o) => o.id === id)?.name ?? id
 }
 
 function pct(used: number, allocated: number): number {
   return allocated > 0 ? Math.round((used / allocated) * 100) : 0
 }
 
-export function getMarketeurQuotas(): MarketeurQuotaView[] {
-  const decl = declarations as Declaration[]
-  const tours = delivery_tours as DeliveryTour[]
+export function getMarketeurQuotas(
+  decl: readonly Declaration[] = declarations,
+  tours: readonly DeliveryTour[] = delivery_tours,
+  orgs: readonly Organization[] = organizations,
+): MarketeurQuotaView[] {
   const ids = Array.from(new Set(decl.map((d) => d.marketeur_org_id)))
 
   return ids.map((id) => {
@@ -31,7 +33,7 @@ export function getMarketeurQuotas(): MarketeurQuotaView[] {
       .reduce((acc, t) => acc + (t.delivered_quantity ?? 0), 0)
     return {
       marketeurId: id,
-      marketeurName: orgName(id),
+      marketeurName: orgName(id, orgs),
       declaredVolume,
       deliveredVolume,
       usageRate: pct(deliveredVolume, declaredVolume),
@@ -39,8 +41,7 @@ export function getMarketeurQuotas(): MarketeurQuotaView[] {
   })
 }
 
-export function getQuotaSummary() {
-  const rows = getMarketeurQuotas()
+export function getQuotaSummary(rows: MarketeurQuotaView[] = getMarketeurQuotas()) {
   return {
     marketeurs: rows.length,
     declared: rows.reduce((acc, r) => acc + r.declaredVolume, 0),

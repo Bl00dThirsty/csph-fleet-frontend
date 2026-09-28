@@ -1,5 +1,5 @@
-import { declarations, organizations } from '@lpg/mock-data'
-import type { DeclarationStatus } from '@lpg/types'
+﻿import { declarations, organizations } from '@/lib/entity-data'
+import type { Declaration, DeclarationStatus, Organization } from '@lpg/types'
 
 export type { DeclarationStatus }
 
@@ -19,24 +19,27 @@ export interface DeclarationView {
 export const declarationStatusLabels: Record<DeclarationStatus, string> = {
   DRAFT: 'Brouillon',
   SUBMITTED: 'Soumise',
-  RECONCILED: 'Réconciliée',
-  DISPUTED: 'Contestée',
+  RECONCILED: 'RÃ©conciliÃ©e',
+  DISPUTED: 'ContestÃ©e',
 }
 
 export const declarationStatusOptions: readonly { label: string; value: DeclarationStatus }[] = (
   Object.keys(declarationStatusLabels) as DeclarationStatus[]
 ).map((value) => ({ label: declarationStatusLabels[value], value }))
 
-function orgName(id: string): string {
-  return organizations.find((o) => o.id === id)?.name ?? id
+function orgName(id: string, orgs: readonly Organization[] = organizations): string {
+  return orgs.find((o) => o.id === id)?.name ?? id
 }
 
-export function getDeclarations(): DeclarationView[] {
-  return declarations
+export function getDeclarations(
+  source: readonly Declaration[] = declarations,
+  orgs: readonly Organization[] = organizations,
+): DeclarationView[] {
+  return source
     .map((d, i) => ({
       id: d.id,
       reference: `DEC-${String(i + 1).padStart(3, '0')}`,
-      marketeur_name: orgName(d.marketeur_org_id),
+      marketeur_name: orgName(d.marketeur_org_id, orgs),
       period: `${d.period_start.slice(0, 10)} au ${d.period_end.slice(0, 10)}`,
       declared_volume: d.declared_volume,
       volume_label: `${d.declared_volume.toLocaleString('fr-FR')} TM`,

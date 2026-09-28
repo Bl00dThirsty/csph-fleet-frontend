@@ -33,6 +33,9 @@ import { buildSidebarFor } from './nav-items'
  *
  * GAP: the `overview` nav item still resolves to `/overview`, which has no
  * route — see TODO: give SUPERVISOR/ADMIN/AGENT a real technical home.
+ *
+ * DRIVER is PDA-only (no web interface); it lands on /tours like LIVREUR so a
+ * driver session that somehow reaches the web sees missions, not a 404.
  */
 export const LANDING_BY_ROLE: Record<Role, string> = {
   SUPERADMIN: '/dashboard',
@@ -43,6 +46,7 @@ export const LANDING_BY_ROLE: Record<Role, string> = {
   MARKETEUR: '/dashboard-marketeur',
   TRANSPORTEUR: '/dashboard-transporteur',
   LIVREUR: '/tours',
+  DRIVER: '/tours',
 }
 
 /** Delegates entirely to the permission-driven projection. */

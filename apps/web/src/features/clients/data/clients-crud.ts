@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CRUD configuration for the `clients` entity.
  *
  * Drives `<EntityForm>` (field list) and the create/edit mapping between the
@@ -6,7 +6,7 @@
  * (organizations for the org select) stay read-only against `curated`.
  */
 
-import { curated } from '@lpg/mock-data'
+import { curated } from '@/lib/entity-data'
 import type { Client } from '@lpg/types'
 import { field, type FieldConfig, type FormValues } from '@/components/entity-crud'
 
@@ -19,11 +19,11 @@ export const clientFields: FieldConfig[] = [
   field.select('org_id', 'Organisation', orgOptions, { required: true }),
   field.text('primary_contact_name', 'Contact principal', { required: true }),
   field.email('primary_contact_email', 'E-mail du contact'),
-  field.text('primary_contact_phone', 'Téléphone du contact'),
+  field.text('primary_contact_phone', 'TÃ©lÃ©phone du contact'),
   field.textarea('billing_address', 'Adresse de facturation'),
-  field.number('credit_limit', 'Limite de crédit'),
-  field.text('tax_id', 'N° fiscal'),
-  field.text('industry_sector', 'Secteur d’activité'),
+  field.number('credit_limit', 'Limite de crÃ©dit'),
+  field.text('tax_id', 'NÂ° fiscal'),
+  field.text('industry_sector', 'Secteur dâ€™activitÃ©'),
   field.switchField('is_active', 'Client actif'),
 ]
 

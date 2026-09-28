@@ -1,5 +1,5 @@
-import { curated } from '@lpg/mock-data'
-import type { Role } from '@lpg/types'
+﻿import { curated } from '@/lib/entity-data'
+import type { AppUser, Role } from '@lpg/types'
 
 export interface PasswordUserView {
   id: string
@@ -26,17 +26,30 @@ function roleLabel(role: string): string {
   return ROLE_LABELS[role] ?? role
 }
 
-export function getPasswordUsers(): PasswordUserView[] {
-  return (curated.users as {
-    id: string
-    email: string
-    first_name: string
-    last_name: string
-    system_role: Role
-    must_change_password?: boolean
-    last_login_at?: string | null
-    locked_until?: string | null
-  }[]).map((user) => ({
+type PasswordUserRow = Pick<
+  AppUser,
+  'id' | 'email' | 'first_name' | 'last_name' | 'system_role'
+> & {
+  must_change_password?: boolean
+  last_login_at?: string | null
+  locked_until?: string | null
+}
+
+export function getPasswordUsers(
+  users: PasswordUserRow[] = curated.users as PasswordUserRow[],
+): PasswordUserView[] {
+  return (
+    users as {
+      id: string
+      email: string
+      first_name: string
+      last_name: string
+      system_role: Role
+      must_change_password?: boolean
+      last_login_at?: string | null
+      locked_until?: string | null
+    }[]
+  ).map((user) => ({
     id: user.id,
     email: user.email,
     fullName: `${user.first_name} ${user.last_name}`.trim(),
@@ -47,8 +60,10 @@ export function getPasswordUsers(): PasswordUserView[] {
   }))
 }
 
-export function getPasswordSummary() {
-  const rows = getPasswordUsers()
+export function getPasswordSummary(
+  users: PasswordUserRow[] = curated.users as PasswordUserRow[],
+) {
+  const rows = getPasswordUsers(users)
   return {
     total: rows.length,
     mustChange: rows.filter((r) => r.mustChange).length,

@@ -1,4 +1,4 @@
-import { anomalies, curated } from '@lpg/mock-data'
+﻿import { anomalies, curated } from '@/lib/entity-data'
 import type { Anomaly } from '@lpg/types'
 
 export interface GeoAnomalyView {
@@ -26,7 +26,7 @@ function resolveGeo(anomaly: Anomaly): { lat: number; lng: number } | null {
     if (geo) return { lat: geo[1], lng: geo[0] }
   }
   // Vehicle / tour / marketeur anomalies: not geo-resolvable from a single point
-  // in the current fixture — drop them from the map layer.
+  // in the current fixture â€” drop them from the map layer.
   return null
 }
 

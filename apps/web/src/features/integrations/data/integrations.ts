@@ -1,4 +1,4 @@
-import { integration_auth } from '@lpg/mock-data'
+import { integration_auth } from '@/lib/entity-data'
 
 export interface IntegrationView {
   id: string

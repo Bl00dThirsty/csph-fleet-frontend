@@ -1,9 +1,9 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type {
   Client as CuratedClient,
   ClientSite as CuratedClientSite,
   Organization as CuratedOrganization,
-} from '@lpg/mock-data'
+} from '@/lib/entity-data'
 import type { Region } from '@lpg/types'
 
 export type ClientStatus = 'ACTIVE' | 'INACTIVE'
@@ -30,11 +30,11 @@ export interface ClientSiteView {
   verified: boolean
 }
 
-export function getClients(): ClientView[] {
-  const clients = curated.clients as CuratedClient[]
-  const orgs = curated.organizations as CuratedOrganization[]
-  const clientSites = curated.client_sites as CuratedClientSite[]
-
+export function getClients(
+  clients: CuratedClient[] = curated.clients as CuratedClient[],
+  orgs: CuratedOrganization[] = curated.organizations as CuratedOrganization[],
+  clientSites: CuratedClientSite[] = curated.client_sites as CuratedClientSite[],
+): ClientView[] {
   return clients.map((client) => {
     const org = orgs.find((o) => o.id === client.org_id)
     const clientSitesOf = clientSites.filter(
@@ -57,8 +57,10 @@ export function getClients(): ClientView[] {
   })
 }
 
-export function getClientSites(clientOrgId: string): ClientSiteView[] {
-  const clientSites = curated.client_sites as CuratedClientSite[]
+export function getClientSites(
+  clientOrgId: string,
+  clientSites: CuratedClientSite[] = curated.client_sites as CuratedClientSite[],
+): ClientSiteView[] {
   return clientSites
     .filter((s) => s.client_org_id === clientOrgId)
     .map((site) => ({

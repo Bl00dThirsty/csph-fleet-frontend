@@ -14,13 +14,13 @@ export interface NationalMapView {
   vrac: VracSummary
 }
 
-export function getNationalMapView(): NationalMapView {
+export function getNationalMapView(overrides: Partial<NationalMapView> = {}): NationalMapView {
   return {
-    sites: sites,
-    clientSites,
-    zones: getZones(),
-    regions: regionsForMap(),
-    anomalies: getGeoAnomalies(),
-    vrac: aggregateVracVolume(),
+    sites: overrides.sites ?? sites,
+    clientSites: overrides.clientSites ?? clientSites,
+    zones: overrides.zones ?? getZones(),
+    regions: overrides.regions ?? regionsForMap(),
+    anomalies: overrides.anomalies ?? getGeoAnomalies(),
+    vrac: overrides.vrac ?? aggregateVracVolume(),
   }
 }

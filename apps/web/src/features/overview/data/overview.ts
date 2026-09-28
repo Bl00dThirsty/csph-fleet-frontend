@@ -1,14 +1,12 @@
 /**
  * Role-aware "Vue d'ensemble" KPI builder.
  *
- * Single source of data for the overview landing dashboard. Pure function
- * (side-effect free) so it can be shared by the page and tested directly.
- *
- * Each role sees a curated subset of the global analytics, expressed as a
- * flat list of `OverviewCard` KPIs (no table — this is a dashboard).
+ * Legacy: derived counters from the analytics selectors over the curated
+ * fixtures. Now: the page fetches live counters via api.*.list() calls and
+ * passes them in via the `analytics` parameter. Empty analytics => zeroed
+ * KPI cards, which is the correct placeholder while live counters load.
  */
 
-import { buildAnalytics, type Analytics } from '@lpg/mock-data'
 import type { Role } from '@lpg/permissions'
 import { formatTm } from '@/features/map/utils/format'
 
@@ -19,24 +17,60 @@ export type OverviewCard = {
   detail: string
 }
 
-const cached = buildAnalytics()
+/**
+ * Live analytics view — pages assemble this from api.*.list() results
+ * (api.tours.list, api.devices.list, api.anomalies.list, etc.) and pass it
+ * in. All fields default to zero so missing stores don't break the page.
+ */
+export interface LiveAnalytics {
+  organizations: { total: number; active: number }
+  users: { total: number; active: number }
+  sites: { total: number; active: number; verified: number }
+  tours: {
+    total: number
+    inFlight: number
+    planned: number
+    awaitingTransporter: number
+  }
+  devices: {
+    total: number
+    attention: { length: number }
+    byStatus: Record<string, number>
+  }
+  anomalies: { open: number; total: number }
+  reconciliations: { total: number; totalGap: number }
+  checkpoints: { total: number; missed: number }
+  traceability: { traceabilityRate: number; declaredVolume: number; trackedVolume: number }
+}
 
-export function buildOverview(role: Role): OverviewCard[] {
+const zeroAnalytics: LiveAnalytics = {
+  organizations: { total: 0, active: 0 },
+  users: { total: 0, active: 0 },
+  sites: { total: 0, active: 0, verified: 0 },
+  tours: { total: 0, inFlight: 0, planned: 0, awaitingTransporter: 0 },
+  devices: { total: 0, attention: { length: 0 }, byStatus: {} },
+  anomalies: { open: 0, total: 0 },
+  reconciliations: { total: 0, totalGap: 0 },
+  checkpoints: { total: 0, missed: 0 },
+  traceability: { traceabilityRate: 0, declaredVolume: 0, trackedVolume: 0 },
+}
+
+export function buildOverview(role: Role, analytics: LiveAnalytics = zeroAnalytics): OverviewCard[] {
   const cardsByRole: Record<string, () => OverviewCard[]> = {
-    SUPERADMIN: () => adminCards(cached),
-    ADMIN: () => adminCards(cached),
-    TRANSPORTEUR: () => transportCards(cached),
-    MARKETEUR: () => transportCards(cached),
-    SUPERVISOR: () => supervisorCards(cached),
-    INTEGRATEUR: () => supervisorCards(cached),
-    AGENT: () => agentCards(cached),
+    SUPERADMIN: () => adminCards(analytics),
+    ADMIN: () => adminCards(analytics),
+    TRANSPORTEUR: () => transportCards(analytics),
+    MARKETEUR: () => transportCards(analytics),
+    SUPERVISOR: () => supervisorCards(analytics),
+    INTEGRATEUR: () => supervisorCards(analytics),
+    AGENT: () => agentCards(analytics),
   }
 
   const build = cardsByRole[role]
-  return build ? build() : defaultCards(cached)
+  return build ? build() : defaultCards(analytics)
 }
 
-function adminCards(a: Analytics): OverviewCard[] {
+function adminCards(a: LiveAnalytics): OverviewCard[] {
   return [
     {
       id: 'organizations',
@@ -77,7 +111,7 @@ function adminCards(a: Analytics): OverviewCard[] {
   ]
 }
 
-function transportCards(a: Analytics): OverviewCard[] {
+function transportCards(a: LiveAnalytics): OverviewCard[] {
   return [
     {
       id: 'tours-in-flight',
@@ -106,7 +140,7 @@ function transportCards(a: Analytics): OverviewCard[] {
   ]
 }
 
-function supervisorCards(a: Analytics): OverviewCard[] {
+function supervisorCards(a: LiveAnalytics): OverviewCard[] {
   return [
     {
       id: 'devices-total',
@@ -135,7 +169,7 @@ function supervisorCards(a: Analytics): OverviewCard[] {
   ]
 }
 
-function agentCards(a: Analytics): OverviewCard[] {
+function agentCards(a: LiveAnalytics): OverviewCard[] {
   return [
     {
       id: 'sites-active',
@@ -160,13 +194,13 @@ function agentCards(a: Analytics): OverviewCard[] {
       label: 'Déclaré vs tracé',
       value: `${Math.round(a.traceability.traceabilityRate * 100)}%`,
       detail: `tracé · écart ${formatTm(
-        a.traceability.declaredVolume - a.traceability.trackedVolume
+        a.traceability.declaredVolume - a.traceability.trackedVolume,
       )}`,
     },
   ]
 }
 
-function defaultCards(a: Analytics): OverviewCard[] {
+function defaultCards(a: LiveAnalytics): OverviewCard[] {
   return [
     {
       id: 'organizations',
@@ -189,6 +223,6 @@ function defaultCards(a: Analytics): OverviewCard[] {
   ]
 }
 
-export function getOverviewCards(role: Role): OverviewCard[] {
-  return buildOverview(role)
+export function getOverviewCards(role: Role, analytics?: LiveAnalytics): OverviewCard[] {
+  return buildOverview(role, analytics)
 }

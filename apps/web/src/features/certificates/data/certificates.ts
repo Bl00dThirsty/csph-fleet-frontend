@@ -1,4 +1,4 @@
-import { curated } from '@lpg/mock-data'
+﻿import { curated } from '@/lib/entity-data'
 import type {
   Vehicle as CuratedVehicle,
   VehicleType,
@@ -28,7 +28,7 @@ const EXPIRING_WINDOW_DAYS = 30
 
 export const CERT_STATUS_LABELS: Record<CertificateStatus, string> = {
   VALID: 'Valide',
-  EXPIRED: 'Expiré',
+  EXPIRED: 'ExpirÃ©',
   EXPIRING: 'Expirant',
   MISSING: 'Manquant',
 }
@@ -63,12 +63,12 @@ export function getCertificates(): CertificateView[] {
       id: `cert-${vehicle.id}`,
       vehicleId: vehicle.id,
       licensePlate: vehicle.license_plate,
-      certificateNumber: number ?? url ?? '—',
-      issuedAt: vehicle.certificate_issued_at ?? '—',
-      expiryAt: expiry ?? '—',
+      certificateNumber: number ?? url ?? 'â€”',
+      issuedAt: vehicle.certificate_issued_at ?? 'â€”',
+      expiryAt: expiry ?? 'â€”',
       status: expiry ? statusForExpiry(expiry) : 'MISSING',
       orgId: vehicle.org_id,
-      orgName: orgById.get(vehicle.org_id) ?? '—',
+      orgName: orgById.get(vehicle.org_id) ?? 'â€”',
       vehicleType: vehicle.type,
       url: url ?? '',
     })

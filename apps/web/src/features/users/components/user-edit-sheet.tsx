@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   Button,
@@ -17,7 +17,7 @@ import {
   SheetTitle,
   Switch,
 } from '@lpg/ui'
-import { curated } from '@lpg/mock-data'
+import { api } from '@lpg/api-client'
 import { ROLE_LABELS, getCreatableRoles, type Role } from '@lpg/permissions'
 import { useRoleStore } from '@/store/role-store'
 import { useUsersStore, type UserPatch } from '@/store/users-store'
@@ -36,6 +36,11 @@ interface FormState {
   system_role: Role
   org_id: string
   is_active: boolean
+}
+
+interface OrgOption {
+  id: string
+  name: string
 }
 
 const EMPTY_FORM: FormState = {
@@ -86,24 +91,42 @@ function UserEditForm({
   const activeRole = useRoleStore((s) => s.activeRole)
   const creatable = getCreatableRoles(activeRole)
   const roleOptions = creatable
-  const orgOptions = curated.organizations as Array<{ id: string; name: string }>
   const isCreate = user === null
+
+  // Live organisations from organization-service — replaces curated fallback.
+  const [orgOptions, setOrgOptions] = useState<OrgOption[]>([])
+  useEffect(() => {
+    let cancelled = false
+    api.organizations
+      .list({ size: 200 })
+      .then((res) => {
+        if (cancelled) return
+        setOrgOptions(((res.data ?? []) as unknown) as OrgOption[])
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const [form, setForm] = useState<FormState>(() =>
     user ? userToForm(user) : EMPTY_FORM,
   )
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
   function handleSave() {
+    if (submitting) return
     if (!form.first_name.trim() || !form.last_name.trim() || !form.email.trim()) {
-      toast.error('Nom, prénom et e-mail sont obligatoires.')
+      setSubmitError('Nom, prénom et e-mail sont obligatoires.')
       return
     }
     if (!form.org_id) {
-      toast.error('Une organisation est obligatoire.')
+      setSubmitError('Une organisation est obligatoire.')
       return
     }
     const patch: UserPatch = {
@@ -114,14 +137,30 @@ function UserEditForm({
       org_id: form.org_id,
       is_active: form.is_active,
     }
-    if (isCreate) {
-      useUsersStore.getState().createUser(patch as never)
-      toast.success(`Utilisateur ${form.email} créé`)
-    } else {
-      useUsersStore.getState().updateUser(user!.id, patch)
-      toast.success(`Utilisateur ${form.email} mis à jour`)
-    }
-    onClose()
+    setSubmitting(true)
+    setSubmitError(null)
+    ;(async () => {
+      try {
+        if (isCreate) {
+          const username = form.email.split('@')[0]?.replace(/[^a-zA-Z0-9._-]/g, '') || `${form.first_name}.${form.last_name}`.toLowerCase()
+          await useUsersStore.getState().createUser({
+            ...patch,
+            username,
+            password: 'Password123!',
+          } as never)
+          toast.success(`Utilisateur ${form.email} créé en base`)
+        } else {
+          await useUsersStore.getState().updateUser(user!.id, patch)
+          toast.success(`Utilisateur ${form.email} mis à jour en base`)
+        }
+        onClose()
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Erreur réseau — opération non confirmée.'
+        setSubmitError(message)
+      } finally {
+        setSubmitting(false)
+      }
+    })()
   }
 
   return (
@@ -224,12 +263,18 @@ function UserEditForm({
         </div>
       </div>
 
+      {submitError && (
+        <div className='mx-4 mb-2 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300'>
+          {submitError}
+        </div>
+      )}
+
       <SheetFooter className='gap-2 border-t pt-4'>
-        <Button variant='outline' onClick={onClose}>
+        <Button variant='outline' onClick={onClose} disabled={submitting}>
           Annuler
         </Button>
-        <Button onClick={handleSave}>
-          {isCreate ? 'Créer' : 'Enregistrer'}
+        <Button onClick={handleSave} disabled={submitting}>
+          {submitting ? 'Envoi…' : isCreate ? 'Créer' : 'Enregistrer'}
         </Button>
       </SheetFooter>
     </SheetContent>

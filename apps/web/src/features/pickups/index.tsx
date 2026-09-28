@@ -1,8 +1,8 @@
-import { useMemo, useEffect, useState } from 'react'
+﻿import { useMemo, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@lpg/ui'
-import { vehicles as vehiclesData } from '@lpg/mock-data'
+import { vehicles as vehiclesData } from '@/lib/entity-data'
 import { PageHeader } from '@/components/layout/page-header'
 import { PageShell, SectionCard } from '@/components/layout/page'
 import { usePickupsStore } from '@/store/pickups-store'
@@ -44,14 +44,14 @@ export function PickupsPage({ role }: { role: Role }) {
 
   const handleCreated = (created: PickupRequest, vehicleIds: string[]) => {
     if (vehicleIds.length > 0) {
-      toast.success(`${created.reference ?? created.id} créée — ${vehicleIds.length} véhicule(s) assigné(s)`)
+      toast.success(`${created.reference ?? created.id} crÃ©Ã©e â€” ${vehicleIds.length} vÃ©hicule(s) assignÃ©(s)`)
     }
   }
 
   const handleValidate = async (row: Pickup, qty: number) => {
     try {
       await usePickupsStore.getState().approvePickupAsync(row.id, qty)
-      toast.success(`${row.reference} validée pour ${qty.toLocaleString('fr-FR')} TM`)
+      toast.success(`${row.reference} validÃ©e pour ${qty.toLocaleString('fr-FR')} TM`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur de validation')
     }
@@ -60,7 +60,7 @@ export function PickupsPage({ role }: { role: Role }) {
   const handleCancel = async (row: Pickup) => {
     try {
       await usePickupsStore.getState().cancelPickupAsync(row.id)
-      toast.warning(`${row.reference} annulée`)
+      toast.warning(`${row.reference} annulÃ©e`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur lors de l\'annulation')
     }
@@ -75,11 +75,11 @@ export function PickupsPage({ role }: { role: Role }) {
     <PageShell>
       <PageHeader
         title='Approvisionnements (Flux 1)'
-        description={`${summary.total} requêtes — ${summary.draft} brouillon(s), ${summary.validated} validée(s), ${summary.inProgress} en cours, ${summary.completed} terminée(s).`}
+        description={`${summary.total} requÃªtes â€” ${summary.draft} brouillon(s), ${summary.validated} validÃ©e(s), ${summary.inProgress} en cours, ${summary.completed} terminÃ©e(s).`}
         actions={
           role === 'MARKETEUR' || role === 'ADMIN' || role === 'SUPERADMIN' ? (
             <Button className='gap-2' onClick={() => setCreateOpen(true)}>
-              <Plus className='size-4' /> Nouvelle requête
+              <Plus className='size-4' /> Nouvelle requÃªte
             </Button>
           ) : null
         }
@@ -113,25 +113,25 @@ export function PickupsPage({ role }: { role: Role }) {
       <Dialog open={detailOpen !== null && validateOpen === null} onOpenChange={(o) => { if (!o) setDetailOpen(null) }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{detailOpen?.reference ?? '—'}</DialogTitle>
+            <DialogTitle>{detailOpen?.reference ?? 'â€”'}</DialogTitle>
           </DialogHeader>
           {detailOpen && (
             <div className='space-y-2 py-2 text-sm'>
               <p>Marketeur: {detailOpen.marketeur_name}</p>
               <p>Source: {detailOpen.source_name}</p>
               <p>Destination: {detailOpen.destination_name}</p>
-              <p>Quantité demandée: {detailOpen.requested_quantity.toLocaleString('fr-FR')} TM</p>
-              <p>Quantité approuvée: {detailOpen.approved_quantity?.toLocaleString('fr-FR') ?? '—'}</p>
+              <p>QuantitÃ© demandÃ©e: {detailOpen.requested_quantity.toLocaleString('fr-FR')} TM</p>
+              <p>QuantitÃ© approuvÃ©e: {detailOpen.approved_quantity?.toLocaleString('fr-FR') ?? 'â€”'}</p>
               <p>Statut: {detailOpen.pickup_status}</p>
               {detailVehicleIds.length > 0 && (
-                <p>Véhicules: {detailVehicles}</p>
+                <p>VÃ©hicules: {detailVehicles}</p>
               )}
             </div>
           )}
           {(role === 'MARKETEUR' || role === 'ADMIN' || role === 'SUPERADMIN') && detailOpen?.pickup_status !== 'CANCELLED' && detailOpen?.pickup_status !== 'COMPLETED' ? (
             <DialogFooter>
               <Button variant='destructive' onClick={() => { if (detailOpen) handleCancel(detailOpen); setDetailOpen(null) }}>
-                Annuler la requête
+                Annuler la requÃªte
               </Button>
             </DialogFooter>
           ) : null}

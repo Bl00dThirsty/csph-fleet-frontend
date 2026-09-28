@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { MapIcon, Globe } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { NationalMap } from './components/national-map'
@@ -37,9 +37,9 @@ export function NationalMapPage() {
       <section className="rounded-xl border-transparent bg-background/92 p-3 text-xs text-muted-foreground shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <Globe className="h-4 w-4" />
-          Les données affichées proviennent du jeu de graine local
-          ({'@lpg/mock-data'}). Les volumes VRAC sont exprimés en tonnes métriques
-          (TM) — jamais en kg.
+          Les donnÃ©es affichÃ©es proviennent du jeu de graine local
+          ({'@/lib/entity-data'}). Les volumes VRAC sont exprimÃ©s en tonnes mÃ©triques
+          (TM) â€” jamais en kg.
         </div>
       </section>
     </main>

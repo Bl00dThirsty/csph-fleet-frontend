@@ -19,8 +19,8 @@ export function AlertsPage() {
 
       <div className='grid gap-4 sm:grid-cols-3'>
         <KpiTile label='Alertes' value={String(summary.total)} />
-        <KpiTile label='Appareils' value={String(summary.devices)} />
-        <KpiTile label='Anomalies' value={String(summary.anomalies)} />
+        <KpiTile label='Critiques' value={String(summary.critical)} />
+        <KpiTile label='Élevées' value={String(summary.degraded)} />
       </div>
 
       <SectionCard title='File d’alertes' description='Les plus récentes à traiter en priorité.'>

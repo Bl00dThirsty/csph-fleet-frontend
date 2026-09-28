@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@lpg/ui'
 import { hasPermission, type PermissionCode } from '@lpg/permissions'
+import type { Checkpoint } from '@lpg/types'
 import { useRoleStore } from '@/store/role-store'
 import { useToursStore } from '@/store/tours-store'
 import { type TourActivity, type TourneeStatus, type ExecutionMode } from '../data/tour-activity'
@@ -45,20 +46,35 @@ export const MODE_CLASS: Record<ExecutionMode, string> = {
   EXTERNAL: 'bg-indigo-100 text-indigo-800',
 }
 
+const TERMINAL_CHECKPOINT_STATUSES: ReadonlySet<string> = new Set(['COMPLETED', 'SKIPPED'])
+
+/**
+ * Backend guard mirror: a tour closes only once every stop is terminal
+ * (COMPLETED or SKIPPED). With no checkpoints loaded the guard is vacuously
+ * true — the server remains the source of truth and refusals surface as
+ * errors.
+ */
+export function isCloseAllowed(checkpoints?: Checkpoint[]): boolean {
+  if (!checkpoints) return true
+  return checkpoints.every((c) => TERMINAL_CHECKPOINT_STATUSES.has(c.status))
+}
+
 export function TourActions({
   tour,
+  checkpoints,
   onPerformed,
 }: {
   tour: TourActivity
+  checkpoints?: Checkpoint[]
   onPerformed?: (next: TourActivity) => void
 }) {
   const activeRole = useRoleStore((s) => s.activeRole)
   const actions = useMemo(
     () =>
-      tourActions({ status: tour.tourneeStatus, execution_mode: tour.execution_mode }).filter(
-        (action) => hasPermission(activeRole, ACTION_PERMISSION[action]),
-      ),
-    [tour, activeRole],
+      tourActions({ status: tour.tourneeStatus, execution_mode: tour.execution_mode })
+        .filter((action) => hasPermission(activeRole, ACTION_PERMISSION[action]))
+        .filter((action) => action !== 'close' || isCloseAllowed(checkpoints)),
+    [tour, activeRole, checkpoints],
   )
 
   async function handleAction(action: TourAction) {

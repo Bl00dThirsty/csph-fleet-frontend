@@ -4,9 +4,6 @@
   "buildCommand": "pnpm turbo run build --filter @lpg/web",
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
-  "env": {
-    "VITE_API_MODE": "fake"
-  },
   "rewrites": [
     {
       "source": "/(.*)",

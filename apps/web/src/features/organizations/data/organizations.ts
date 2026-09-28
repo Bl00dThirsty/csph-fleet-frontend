@@ -1,7 +1,6 @@
-import { curated } from '@lpg/mock-data'
+import { api } from '@lpg/api-client'
 import type {
   Organization as CuratedOrganization,
-  Site as CuratedSite,
   Region,
 } from '@lpg/types'
 
@@ -34,18 +33,19 @@ const CITY_BY_REGION: Record<Region, string> = {
   SUDOUEST: 'Buéa',
 }
 
-function regionForOrg(orgId: string, idx: number): Region {
-  const sites = curated.sites as CuratedSite[]
-  const owningSite = sites.find((s) => s.org_id === orgId)
-  if (owningSite) return owningSite.region
-  const regions = curated.regions.map((r) => r.code as Region)
-  return regions[idx % regions.length] ?? 'CENTRE'
-}
+const FALLBACK_REGIONS: readonly Region[] = [
+  'CENTRE', 'LITTORAL', 'ADAMAOUA', 'EST', 'EXTREMENORD',
+  'NORD', 'NORDOUEST', 'OUEST', 'SUD', 'SUDOUEST',
+]
 
-export function getOrganizations(): Organization[] {
-  const orgs = curated.organizations as CuratedOrganization[]
-  return orgs.map((org, idx) => {
-    const region = regionForOrg(org.id, idx)
+/**
+ * Synchronous accessor — returns the live org cache if the host page already
+ * triggered an `api.organizations.list()` fetch. Pages that need a live list
+ * should call `fetchOrganizations()` on mount and pass the result in.
+ */
+export function getOrganizations(raw: CuratedOrganization[] = []): Organization[] {
+  return raw.map((org, idx) => {
+    const region: Region = ((org as any).region as Region | undefined) ?? FALLBACK_REGIONS[idx % FALLBACK_REGIONS.length] ?? 'CENTRE'
     return {
       id: org.id,
       name: org.name,
@@ -53,12 +53,29 @@ export function getOrganizations(): Organization[] {
       status: org.is_active ? 'ACTIVE' : 'SUSPENDED',
       region,
       city: CITY_BY_REGION[region] ?? '—',
-      sites: org.operational_site_count ?? 0,
+      sites: (org as any).operational_site_count ?? 0,
       created_at: org.created_at ?? '2026-01-01',
       updated_at: org.updated_at ?? '2026-01-01',
     }
   })
 }
+
+/**
+ * Async helper for pages that want the live org list directly. Returns an
+ * empty array on any failure — the previous curated.* fallback is gone.
+ */
+export async function fetchOrganizations(): Promise<CuratedOrganization[]> {
+  try {
+    const res = await api.organizations.list({ size: 200 })
+    return ((res.data ?? []) as unknown) as CuratedOrganization[]
+  } catch {
+    return []
+  }
+}
+
+/** Backwards-compatible empty seed used by tests and any stragglers that
+ *  imported the old `organizations` constant. */
+export const organizations: Organization[] = []
 
 export const ORG_TYPE_LABELS: Record<CuratedOrganization['type'], string> = {
   REGULATEUR: 'Régulateur',

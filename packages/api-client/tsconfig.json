@@ -13,7 +13,6 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "types": [],
     "paths": {
       "@lpg/types": ["../types/src/index.ts"]
     }

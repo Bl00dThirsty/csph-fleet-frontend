@@ -1,5 +1,5 @@
-import { notification_groups, notification_rules } from '@lpg/mock-data'
-import type { NotificationRule, RiskLevel } from '@lpg/types'
+﻿import { notification_groups, notification_rules } from '@/lib/entity-data'
+import type { NotificationGroup, NotificationRule, RiskLevel } from '@lpg/types'
 import type { AnomalyType } from '@lpg/types'
 
 export type { RiskLevel, AnomalyType }
@@ -24,29 +24,36 @@ export const alertSeverityLabels: Record<RiskLevel, string> = {
   CRITIQUEEXTREME: 'Critique extrême',
 }
 
-const GROUP_NAME_BY_ID: Record<string, string> = Object.fromEntries(
-  notification_groups.map((group) => [group.id, group.name]),
-)
-
-export function getAlertRules(): AlertRuleView[] {
-  const rules = notification_rules as NotificationRule[]
+export function getAlertRules(
+  rules: NotificationRule[] = notification_rules as NotificationRule[],
+  groups: NotificationGroup[] = notification_groups as NotificationGroup[],
+): AlertRuleView[] {
+  const groupNameById: Record<string, string> = Object.fromEntries(
+    groups.map((group) => [group.id, group.name]),
+  )
   return rules.map((rule) => ({
     id: rule.id,
     name: rule.name,
     anomalyType: rule.anomaly_type ?? null,
     minSeverity: rule.min_severity ?? null,
     targetGroupId: rule.target_group_id,
-    targetGroupName: GROUP_NAME_BY_ID[rule.target_group_id] ?? rule.target_group_id,
+    targetGroupName: groupNameById[rule.target_group_id] ?? rule.target_group_id,
     isActive: rule.is_active,
     updatedAt: rule.updated_at ?? null,
   }))
 }
 
-export function getActiveAlertRuleCount(): number {
-  return getAlertRules().filter((r) => r.isActive).length
+export function getActiveAlertRuleCount(
+  rules?: NotificationRule[],
+  groups?: NotificationGroup[],
+): number {
+  return getAlertRules(rules, groups).filter((r) => r.isActive).length
 }
 
-export function getAnomalyTypeCount(): number {
-  const rules = getAlertRules()
-  return new Set(rules.map((r) => r.anomalyType).filter(Boolean)).size
+export function getAnomalyTypeCount(
+  rules?: NotificationRule[],
+  groups?: NotificationGroup[],
+): number {
+  const views = getAlertRules(rules, groups)
+  return new Set(views.map((r) => r.anomalyType).filter(Boolean)).size
 }

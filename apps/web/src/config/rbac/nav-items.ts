@@ -805,6 +805,11 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
       // on-disk route. Re-introduce when a dedicated LIVREUR milestone lands.
     ],
   },
+  // DRIVER is PDA-only like LIVREUR (backend seeds it for the mobile app, no
+  // web interface). Empty groups until a driver milestone lands.
+  DRIVER: {
+    groups: [],
+  },
 }
 
 /* --------------------------------------------------------------------------

@@ -462,7 +462,7 @@ function createRoutePopupContent(trip: RouteTripView, formatQuantity: (value: nu
       ${popupLine('Charge initiale', formatQuantity(trip.loadedQuantity))}
       ${popupLine('Volume livré', formatQuantity(trip.deliveredQuantity))}
       ${popupLine('Volume restant', formatQuantity(trip.remainingQuantity))}
-      ${popupLine('Prochaine étape', trip.nextStop.site.name)}
+      ${popupLine('Prochaine étape', trip.nextStop?.site.name ?? '—')}
     </div>
   `
 }

@@ -1,4 +1,4 @@
-import { curated, notification_group_members, notification_groups } from '@lpg/mock-data'
+﻿import { curated, notification_group_members, notification_groups } from '@/lib/entity-data'
 import type { NotificationGroup, NotificationGroupMember, NotificationGroupType } from '@lpg/types'
 
 export type { NotificationGroupType }
