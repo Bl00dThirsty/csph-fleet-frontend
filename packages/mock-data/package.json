@@ -9,10 +9,7 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "scripts": {
-    "typecheck": "echo 'mock-data stub: nothing to typecheck'",
-    "test": "echo 'mock-data stub: nothing to test'"
-  },
+  "scripts": {},
   "dependencies": {
     "@lpg/types": "workspace:*"
   }

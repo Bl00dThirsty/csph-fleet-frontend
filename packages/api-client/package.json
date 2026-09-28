@@ -3,12 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "main": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@lpg/mock-data": "workspace:*",
     "@lpg/types": "workspace:*",
     "axios": "^1.15.0"
   },
   "devDependencies": {
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "vitest": "^4.1.4"
   }
 }
