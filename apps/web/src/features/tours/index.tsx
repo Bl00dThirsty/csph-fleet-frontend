@@ -29,7 +29,12 @@ export function ToursPage() {
   const role = activeRole || (user?.system_role as Role) || 'SUPERADMIN'
   const [slice, setSlice] = useState<TourSlice>('ALL')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const allTours = useToursStore((s) => s.views(slice))
+  const storeTours = useToursStore((s) => s.tours)
+  const storeCheckpoints = useToursStore((s) => s.checkpoints)
+  const allTours = useMemo(
+    () => useToursStore.getState().views(slice),
+    [slice, storeTours, storeCheckpoints]
+  )
 
   const tours = useMemo(() => {
     if (role === 'MARKETEUR' && (user?.org_id || user?.org_name)) {

@@ -205,6 +205,14 @@ export interface Organization extends BaseEntity {
 
 export interface AppUser extends BaseEntity {
   id: string
+  /**
+   * Login identifier — the backend's `persons.person_id` business key
+   * (`superadmin.cspHq`, `chauffeur.abc1`, `resp.abc`…). It is what the
+   * livreur types on the PDA/mobile app, and `AuthDataInitializer` seeds it
+   * equal to the username, NOT to the email. Optional because the curated
+   * fixtures predate the column; the HTTP adapter always fills it in.
+   */
+  username?: string
   email: string
   password_hash?: string
   first_name: string
@@ -213,9 +221,16 @@ export interface AppUser extends BaseEntity {
   org_id: string
   phone?: string
   job_title?: string
+  job_code?: string
+  city?: string
+  language?: string
   site_id?: string
   custom_permissions?: string[]
+  /** Role codes from `user_role_assignments`, e.g. `["LIVREUR"]`. */
+  role_codes?: string[]
   is_active: boolean
+  is_certified?: boolean
+  is_locked?: boolean
   mfa_status?: MfaStatus
   last_login_at?: string | null
   last_login_ip?: string | null
