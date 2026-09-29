@@ -42,6 +42,30 @@ describe('joinAnomalyGeo', () => {
     expect(result[0]?.entity_label).toBe('Client Yaoundé')
   })
 
+  it('prefers site_id over client_site_id when both are set', () => {
+    const result = joinAnomalyGeo(
+      [anomaly({ site_id: 'site-1', client_site_id: 'cs-1' })],
+      sites,
+      clientSites,
+    )
+    expect(result).toHaveLength(1)
+    expect(result[0]?.longitude).toBe(9.7)
+    expect(result[0]?.latitude).toBe(4.05)
+    expect(result[0]?.entity_label).toBe('Dépôt Douala')
+  })
+
+  it('falls through to client_site_id when site_id does not resolve', () => {
+    const result = joinAnomalyGeo(
+      [anomaly({ site_id: 'ghost', client_site_id: 'cs-1' })],
+      sites,
+      clientSites,
+    )
+    expect(result).toHaveLength(1)
+    expect(result[0]?.longitude).toBe(11.5)
+    expect(result[0]?.latitude).toBe(3.87)
+    expect(result[0]?.entity_label).toBe('Client Yaoundé')
+  })
+
   it('drops an anomaly that references neither a site nor a client site', () => {
     const result = joinAnomalyGeo(
       [anomaly({ site_id: null, client_site_id: null, entity_id: 'veh-9' })],
