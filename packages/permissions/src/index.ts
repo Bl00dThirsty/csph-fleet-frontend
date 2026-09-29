@@ -203,7 +203,7 @@ export const PERMISSION_CATALOG = [
   { code: 'system-health.read', category: 'reporting', label: 'Voir la santé du système' },
   { code: 'integrations.read', category: 'reporting', label: 'Voir les intégrations' },
   { code: 'integrations.write', category: 'reporting', label: 'Modifier les intégrations' },
-  { code: 'national-map.read', category: 'reporting', label: 'Voir la carte nationale (SUPERADMIN)' },
+  { code: 'national-map.read', category: 'reporting', label: 'Voir la carte interactive nationale' },
   { code: 'dashboard.read', category: 'reporting', label: 'Voir le tableau de bord national' },
   { code: 'overview.read', category: 'reporting', label: 'Voir l\'aperçu' },
 ] as const satisfies readonly {
@@ -309,6 +309,7 @@ const ADMIN_GRANTS = [
   'settings.read', 'settings.write', 'settings.manage', 'system-health.read',
   'dashboard.read',
   'overview.read',
+  'national-map.read',
 ] as const satisfies readonly PermissionCode[]
 
 const SUPERVISOR_GRANTS = [
@@ -318,6 +319,7 @@ const SUPERVISOR_GRANTS = [
   'reports.read', 'reports.export', 'integrations.read',
   'pda.read', 'devices.read', 'trucks.read', 'tours.read', 'checkpoints.read', 'scans.read',
   'overview.read',
+  'national-map.read',
 ] as const satisfies readonly PermissionCode[]
 
 const INTEGRATEUR_GRANTS = [
@@ -331,6 +333,7 @@ const INTEGRATEUR_GRANTS = [
   'notification-groups.read', 'notification-rules.read',
   'audit-logs.read', 'anomalies.read', 'incidents.read',
   'overview.read',
+  'national-map.read',
 ] as const satisfies readonly PermissionCode[]
 
 const AGENT_GRANTS = [
@@ -346,6 +349,7 @@ const AGENT_GRANTS = [
   'markets.read', 'transporters.read', 'livreurs.read', 'quotas.read', 'clients.read',
   'notification-groups.read', 'notification-rules.read',
   'overview.read',
+  'national-map.read',
 ] as const satisfies readonly PermissionCode[]
 
 const MARKETEUR_GRANTS = [
@@ -365,6 +369,7 @@ const MARKETEUR_GRANTS = [
   'anomalies.read', 'risks.read', 'alerts.read',
   'reports.read', 'reports.generate', 'reports.export', 'metrics.read',
   'overview.read',
+  'national-map.read',
 ] as const satisfies readonly PermissionCode[]
 
 const TRANSPORTEUR_GRANTS = [
@@ -386,6 +391,7 @@ const TRANSPORTEUR_GRANTS = [
   'anomalies.read', 'risks.read', 'alerts.read',
   'reports.read', 'metrics.read',
   'overview.read',
+  'national-map.read',
 ] as const satisfies readonly PermissionCode[]
 
 const LIVREUR_GRANTS = [

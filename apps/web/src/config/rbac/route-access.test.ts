@@ -42,6 +42,13 @@ describe('route-access', () => {
       expect(canAccessPath('AGENT', '/client-sites')).toBe(true)
     })
 
+    it('CSPH accounts (ADMIN, SUPERVISOR, AGENT) can access /map', () => {
+      expect(canAccessPath('ADMIN', '/map')).toBe(true)
+      expect(canAccessPath('SUPERVISOR', '/map')).toBe(true)
+      expect(canAccessPath('AGENT', '/map')).toBe(true)
+      expect(canAccessPath('SUPERADMIN', '/map')).toBe(true)
+    })
+
     it('SUPERADMIN can reach every declared path', () => {
       for (const p of ['/organizations', '/devices', '/rfid-tags', '/pickups', '/sites', '/marketers']) {
         expect(canAccessPath('SUPERADMIN', p)).toBe(true)

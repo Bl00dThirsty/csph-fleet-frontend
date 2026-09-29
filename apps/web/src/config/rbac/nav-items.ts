@@ -725,7 +725,7 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
   },
   ADMIN: {
     groups: [
-      { title: 'Gestion', items: ['overview', 'users', 'marketers', 'transporters', 'dashboard-admin'] },
+      { title: 'Gestion', items: ['overview', 'map', 'users', 'marketers', 'transporters', 'dashboard-admin'] },
       {
         title: 'Validation & Contrôle',
         items: ['site-verifications', 'pickups', 'tours', 'tour-tracking', 'declarations', 'reconciliations'],
@@ -739,7 +739,7 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
   },
   SUPERVISOR: {
     groups: [
-      { title: 'Monitoring technique', items: ['overview', 'infra', 'system-metrics', 'system-health', 'dashboard-supervisor'] },
+      { title: 'Monitoring technique', items: ['overview', 'map', 'infra', 'system-metrics', 'system-health', 'dashboard-supervisor'] },
       {
         title: 'Piste technique (Anomalies)',
         items: ['device-health', 'gps-tracking', 'alerts', 'anomalies-technical'],
@@ -752,7 +752,7 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
     groups: [
       {
         title: 'Matériel IoT',
-        items: ['overview', 'devices', 'rfid-tags', 'gps-config'],
+        items: ['overview', 'map', 'devices', 'rfid-tags', 'gps-config'],
       },
       {
         title: 'Authentification & Sécurité',
@@ -763,7 +763,7 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
   },
   AGENT: {
     groups: [
-      { title: 'Suivi terrain', items: ['overview', 'marketers', 'client-sites'] },
+      { title: 'Suivi terrain', items: ['overview', 'map', 'marketers', 'client-sites'] },
       {
         title: 'Investigation (Piste métier)',
         items: ['declarations', 'anomalies-investigation', 'tours', 'tour-tracking', 'visits'],
@@ -773,7 +773,7 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
   },
   MARKETEUR: {
     groups: [
-      { title: 'Pilotage & Flotte', items: ['dashboard-marketeur', 'vehicles', 'drivers', 'devices', 'users'] },
+      { title: 'Pilotage & Flotte', items: ['dashboard-marketeur', 'map', 'vehicles', 'drivers', 'devices', 'users'] },
       {
         title: 'Flux 1 — Approvisionnement',
         items: ['pickups', 'pickup-tracking'],
@@ -792,7 +792,7 @@ const ROLE_NAV_DECL: Record<Role, RoleDecl> = {
     groups: [
       {
         title: 'Opérations',
-        items: ['dashboard-transporteur', 'tours', 'tour-tracking'],
+        items: ['dashboard-transporteur', 'map', 'tours', 'tour-tracking'],
       },
       { title: 'Ma flotte & Équipes', items: ['vehicles', 'drivers', 'livreurs', 'users'] },
       { title: 'Contrats & Clients', items: ['contracts', 'performance'] },
