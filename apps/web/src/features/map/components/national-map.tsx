@@ -1,13 +1,36 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import Graphic from '@arcgis/core/Graphic.js'
 import ArcGISMap from '@arcgis/core/Map.js'
 import '@arcgis/core/assets/esri/themes/light/main.css'
 import esriConfig from '@arcgis/core/config.js'
 import Point from '@arcgis/core/geometry/Point.js'
+import Polyline from '@arcgis/core/geometry/Polyline.js'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer.js'
 import MapView from '@arcgis/core/views/MapView.js'
 import type { ClickEvent } from '@arcgis/core/views/input/types.js'
-import { AlertTriangle, Wifi } from 'lucide-react'
+
+import { useSitesStore } from '@/store/sites-store'
+import { useClientSitesStore } from '@/store/client-sites-store'
+import { useVehiclesStore } from '@/store/vehicles-store'
+import { useRegionsStore } from '@/store/regions-store'
+import { useAnomaliesStore } from '@/store/anomalies-store'
+
+import { getSites } from '@/features/sites/data/sites'
+import { getClientSitesView } from '@/features/map/data/client-sites'
+import { getTrucks } from '@/features/trucks/data/trucks'
+import { aggregateVracVolume } from '@/features/map/lib/vrac-volume'
+import { regionsForMap } from '@/features/map/lib/regions'
+import { getGeoAnomalies } from '@/features/map/data/geo-anomalies'
+import { getAllVracRoutes, type VracTourRoute } from '@/features/map/data/itineraries'
+import {
+  DEFAULT_MAP_SITES,
+  DEFAULT_MAP_CLIENT_SITES,
+  DEFAULT_MAP_ANOMALIES,
+  DEFAULT_MAP_VRAC_SUMMARY,
+  CAMEROON_REGIONS_SEEDED,
+} from '@/features/map/data/map-seed'
+
+import { Wifi } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { getNationalMapView, type NationalMapView } from '@/features/map/data/national-map'
@@ -18,51 +41,109 @@ import {
   rgbaFromTuple,
 } from '@/features/map/utils/map-theme'
 import type { MapTheme } from '@/features/map/utils/map-theme'
-import { LegendSiteIcon } from '@/features/map/utils/legend'
 import { formatTm } from '@/features/map/utils/format'
 import { getInitialLayers, type MapLayerKey } from '@/features/map/lib/layers'
 import {
   buildClientSitePopupContent,
   buildRegionPopupContent,
   buildAnomalyPopupContent,
+  buildRoutePopupContent,
 } from '@/features/map/utils/popup'
 import { createSiteGraphics } from '@/features/sites/utils/site-graphics'
-import type { SiteType } from '@/features/sites/data/sites'
 import lpgImageUrl from '@/assets/lpg.png'
+import { GisCanvasFallback } from './gis-canvas-fallback'
 
-const arcgisApiKey = String(import.meta.env.VITE_ARCGIS_API_KEY ?? '').trim()
-
-if (arcgisApiKey) {
-  esriConfig.apiKey = arcgisApiKey
+const rawApiKey = String(import.meta.env.VITE_ARCGIS_API_KEY ?? '').trim()
+if (rawApiKey) {
+  esriConfig.apiKey = rawApiKey
 }
 
-const CAMEROON_CENTER: [number, number] = [8.7, 12.3]
+const CAMEROON_CENTER: [number, number] = [9.7, 4.05] // Centré sur l'axe Douala / Wouri
 
 export type NationalMapProps = {
   mapTheme?: MapTheme
   className?: string
+  layers?: Record<MapLayerKey, boolean>
+  focusedRoute?: VracTourRoute | null
+  onFocusRoute?: (route: VracTourRoute) => void
 }
 
 export function NationalMap({
   mapTheme = 'light',
   className,
+  layers: externalLayers,
+  focusedRoute,
+  onFocusRoute,
 }: NationalMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<ArcGISMap | null>(null)
   const viewRef = useRef<MapView | null>(null)
   const layersRef = useRef<Record<string, GraphicsLayer>>({})
   const [isReady, setIsReady] = useState(false)
-  const [loadFailed, setLoadFailed] = useState(false)
-  const [data] = useState<NationalMapView | null>(() => getNationalMapView())
+  const [loadFailed, setLoadFailed] = useState(!rawApiKey)
+
+  const activeLayers = useMemo(
+    () => externalLayers ?? getInitialLayers(),
+    [externalLayers],
+  )
+
+  const { sites: sitesEntities, fetchSites } = useSitesStore()
+  const { clientSites: clientSitesEntities, fetchClientSites } = useClientSitesStore()
+  const { vehicles, fetchVehicles } = useVehiclesStore()
+  const { regions, fetchRegions } = useRegionsStore()
+  const { anomalies, fetchAnomalies } = useAnomaliesStore()
 
   useEffect(() => {
-    if (!arcgisApiKey || !mapContainerRef.current) return
+    fetchSites()
+    fetchClientSites()
+    fetchVehicles()
+    fetchRegions()
+    fetchAnomalies()
+  }, [])
 
-    const perLayer: Record<string, GraphicsLayer> = {}
-    const initialToggles = getInitialLayers()
-    for (const key of Object.keys(initialToggles) as MapLayerKey[]) {
-      if (key === 'vrac') continue
-      perLayer[key] = new GraphicsLayer({ title: `LPG ${key}` })
+  // Hydratation réactive : données d'API si reçues, sinon graine réaliste Cameroun
+  const data = useMemo<NationalMapView>(() => {
+    const liveSites = sitesEntities.length > 0 ? getSites(sitesEntities) : DEFAULT_MAP_SITES
+    const liveClients =
+      clientSitesEntities.length > 0
+        ? getClientSitesView(clientSitesEntities)
+        : DEFAULT_MAP_CLIENT_SITES
+    const liveVrac =
+      vehicles.length > 0
+        ? aggregateVracVolume(getTrucks(vehicles))
+        : DEFAULT_MAP_VRAC_SUMMARY
+    const liveRegions =
+      regions.length > 0 ? regionsForMap(regions) : CAMEROON_REGIONS_SEEDED
+    const liveAnomalies =
+      anomalies.length > 0
+        ? getGeoAnomalies(anomalies, sitesEntities, clientSitesEntities)
+        : DEFAULT_MAP_ANOMALIES
+    const routes = getAllVracRoutes()
+
+    return getNationalMapView({
+      sites: liveSites,
+      clientSites: liveClients,
+      vrac: liveVrac,
+      regions: liveRegions,
+      anomalies: liveAnomalies,
+      routes,
+    })
+  }, [sitesEntities, clientSitesEntities, vehicles, regions, anomalies])
+
+  // Initialisation ArcGIS
+  useEffect(() => {
+    if (!rawApiKey || !mapContainerRef.current) {
+      setLoadFailed(true)
+      return
+    }
+
+    const perLayer: Record<string, GraphicsLayer> = {
+      sites: new GraphicsLayer({ title: 'LPG sites' }),
+      clientSites: new GraphicsLayer({ title: 'LPG clientSites' }),
+      zones: new GraphicsLayer({ title: 'LPG zones' }),
+      regions: new GraphicsLayer({ title: 'LPG regions' }),
+      anomalies: new GraphicsLayer({ title: 'LPG anomalies' }),
+      routes: new GraphicsLayer({ title: 'LPG routes' }),
     }
     layersRef.current = perLayer
 
@@ -78,7 +159,7 @@ export function NationalMap({
       constraints: { minZoom: 4 },
       popup: { dockEnabled: false },
       theme: getArcgisViewTheme(mapTheme),
-      zoom: 7,
+      zoom: 12,
     })
 
     const handle = view.on('click', async (event: ClickEvent) => {
@@ -118,6 +199,7 @@ export function NationalMap({
     }
   }, [])
 
+  // Basemap & theme sync
   useEffect(() => {
     const map = mapRef.current
     const view = viewRef.current
@@ -126,11 +208,27 @@ export function NationalMap({
     view.theme = getArcgisViewTheme(mapTheme)
   }, [isReady, mapTheme])
 
+  // Visibilité des couches réactive aux bascules
+  useEffect(() => {
+    const layers = layersRef.current
+    if (!isReady || !layers) return
+
+    for (const [key, isVisible] of Object.entries(activeLayers)) {
+      if (layers[key]) {
+        layers[key].visible = isVisible
+      }
+    }
+  }, [isReady, activeLayers])
+
+  // Rendu des graphiques vectoriels sur ArcGIS
   useEffect(() => {
     const layers = layersRef.current
     if (!isReady || !data) return
 
+    // 1. SITES MARCHANDS
     const siteGraphics = data.sites.flatMap((s) => createSiteGraphics(s, mapTheme))
+
+    // 2. SITES CLIENTS
     const clientGraphics = data.clientSites.map((cs) => {
       const pt = new Point({
         longitude: cs.longitude,
@@ -142,8 +240,8 @@ export function NationalMap({
         symbol: {
           type: 'picture-marker',
           url: lpgImageUrl,
-          width: 22,
-          height: 22,
+          width: 24,
+          height: 24,
         },
         attributes: { kind: 'client-site', clientSiteId: cs.id },
         popupTemplate: {
@@ -152,6 +250,8 @@ export function NationalMap({
         },
       })
     })
+
+    // 3. RÉGIONS
     const regionGraphics = data.regions.map((r) =>
       new Graphic({
         geometry: new Point({
@@ -162,8 +262,8 @@ export function NationalMap({
         symbol: {
           type: 'simple-marker',
           style: 'circle',
-          color: rgbaFromTuple([60, 90, 200, 0.55]),
-          size: 24,
+          color: rgbaFromTuple([60, 90, 200, 0.45]),
+          size: 26,
           outline: {
             color: getMarkerOutlineColor(mapTheme, false),
             width: 1.5,
@@ -171,11 +271,13 @@ export function NationalMap({
         },
         attributes: { kind: 'region', regionCode: r.code },
         popupTemplate: {
-          title: r.name,
+          title: `Région ${r.name}`,
           content: buildRegionPopupContent(r, mapTheme),
         },
       }),
     )
+
+    // 4. ANOMALIES GÉOGRAPHIQUES
     const anomalyGraphics = data.anomalies.map((a) =>
       new Graphic({
         geometry: new Point({
@@ -189,46 +291,167 @@ export function NationalMap({
           color: [239, 68, 68],
           size: 18,
           outline: {
-            color: [239, 68, 68, 0.9],
+            color: [255, 255, 255, 0.95],
             width: 2,
           },
         },
         attributes: { kind: 'anomaly', anomalyId: a.id },
         popupTemplate: {
-          title: a.type,
+          title: `Alerte : ${a.type}`,
           content: buildAnomalyPopupContent(a, mapTheme),
         },
       }),
     )
 
+    // 5. ITINÉRAIRES VRAC (Tracé réel Bonabéri -> Akwa Palace Hotel)
+    const routeGraphics: Graphic[] = []
+    for (const route of data.routes) {
+      const line = new Polyline({
+        paths: [route.path],
+        spatialReference: { wkid: 4326 },
+      })
+
+      // Gaine lumineuse externe
+      routeGraphics.push(
+        new Graphic({
+          geometry: line,
+          symbol: {
+            type: 'simple-line',
+            color: [245, 158, 11, 0.35],
+            width: 8,
+            cap: 'round',
+            join: 'round',
+          },
+        }),
+      )
+
+      // Trait de route principal
+      routeGraphics.push(
+        new Graphic({
+          geometry: line,
+          symbol: {
+            type: 'simple-line',
+            color: [245, 158, 11, 0.95],
+            width: 3.5,
+            style: 'solid',
+            cap: 'round',
+            join: 'round',
+          },
+          attributes: { kind: 'vrac-route', tourCode: route.tourCode },
+          popupTemplate: {
+            title: `Tournée VRAC : ${route.tourCode}`,
+            content: buildRoutePopupContent(route, mapTheme),
+          },
+        }),
+      )
+
+      // Point départ
+      routeGraphics.push(
+        new Graphic({
+          geometry: new Point({
+            longitude: route.departureCoords[0],
+            latitude: route.departureCoords[1],
+            spatialReference: { wkid: 4326 },
+          }),
+          symbol: {
+            type: 'simple-marker',
+            style: 'circle',
+            color: [16, 185, 129],
+            size: 14,
+            outline: { color: [255, 255, 255], width: 2 },
+          },
+          attributes: { kind: 'route-start', name: route.departureName },
+          popupTemplate: {
+            title: `Départ : ${route.departureName}`,
+            content: `<b>Heure de départ :</b> ${route.startedAt}<br/><b>Opération :</b> Emplissage et pesée validés.`,
+          },
+        }),
+      )
+
+      // Point arrivée
+      routeGraphics.push(
+        new Graphic({
+          geometry: new Point({
+            longitude: route.destinationCoords[0],
+            latitude: route.destinationCoords[1],
+            spatialReference: { wkid: 4326 },
+          }),
+          symbol: {
+            type: 'simple-marker',
+            style: 'circle',
+            color: [59, 130, 246],
+            size: 14,
+            outline: { color: [255, 255, 255], width: 2 },
+          },
+          attributes: { kind: 'route-end', name: route.destinationName },
+          popupTemplate: {
+            title: `Arrivée : ${route.destinationName}`,
+            content: `<b>Heure estimée :</b> ${route.estimatedArrival}<br/><b>Volume :</b> ${formatTm(route.loadedQuantityTM)}`,
+          },
+        }),
+      )
+
+      // Camion en transit (position active sur le Pont du Wouri)
+      routeGraphics.push(
+        new Graphic({
+          geometry: new Point({
+            longitude: route.currentPosition[0],
+            latitude: route.currentPosition[1],
+            spatialReference: { wkid: 4326 },
+          }),
+          symbol: {
+            type: 'simple-marker',
+            style: 'diamond',
+            color: [245, 158, 11],
+            size: 16,
+            outline: { color: [255, 255, 255], width: 2.5 },
+          },
+          attributes: { kind: 'active-truck', plate: route.vehiclePlate },
+          popupTemplate: {
+            title: `Citerne VRAC : ${route.vehiclePlate}`,
+            content: `<b>Chauffeur :</b> ${route.driverName}<br/><b>Position :</b> Traversée du Pont du Wouri<br/><b>Volume :</b> ${formatTm(route.loadedQuantityTM)}<br/><b>Vitesse :</b> 38 km/h`,
+          },
+        }),
+      )
+    }
+
+    // Réinitialisation et ajout des graphiques
     layers.sites?.removeAll()
     layers.clientSites?.removeAll()
     layers.regions?.removeAll()
     layers.anomalies?.removeAll()
+    layers.routes?.removeAll()
 
     layers.sites?.addMany(siteGraphics)
     layers.clientSites?.addMany(clientGraphics)
     layers.regions?.addMany(regionGraphics)
     layers.anomalies?.addMany(anomalyGraphics)
+    layers.routes?.addMany(routeGraphics)
   }, [isReady, mapTheme, data])
 
-  if (!arcgisApiKey) {
+  // Zoom animé sur l'itinéraire sélectionné
+  useEffect(() => {
+    if (!focusedRoute || !viewRef.current) return
+    const view = viewRef.current
+    const line = new Polyline({
+      paths: [focusedRoute.path],
+      spatialReference: { wkid: 4326 },
+    })
+    if (line.extent) {
+      view.goTo({ target: line.extent.expand(1.35) }, { duration: 900 }).catch(() => {})
+    }
+  }, [focusedRoute])
+
+  // Fallback vectoriel GIS autonome si clé ArcGIS absente ou service injoignable
+  if (loadFailed) {
     return (
-      <div
-        className={cn(
-          'flex min-h-[560px] items-center justify-center bg-muted/30 p-6 text-center md:min-h-[620px]',
-          className,
-        )}
-      >
-        <div className="max-w-sm space-y-2">
-          <AlertTriangle className="mx-auto size-8 text-amber-500" />
-          <p className="text-sm font-medium">ArcGIS</p>
-          <p className="text-sm text-muted-foreground">
-            Renseigne VITE_ARCGIS_API_KEY dans le fichier .env pour charger la
-            carte.
-          </p>
-        </div>
-      </div>
+      <GisCanvasFallback
+        data={data}
+        layers={activeLayers}
+        focusedRoute={focusedRoute}
+        onFocusRoute={onFocusRoute}
+        className={className}
+      />
     )
   }
 
@@ -246,89 +469,57 @@ export function NationalMap({
         className="absolute inset-0 h-full min-h-[560px] w-full md:min-h-[620px]"
       />
 
+      {/* Top Floating Badges */}
       <div className="pointer-events-none absolute top-4 right-16 flex flex-wrap items-center justify-end gap-2">
         <Badge className="gap-1 border-transparent bg-background/90 text-foreground shadow-sm backdrop-blur">
           <Wifi className="size-3 text-emerald-500" />
-          ArcGIS
+          ArcGIS Actif
         </Badge>
-        {data?.sites.length ? (
+        {data.sites.length > 0 && (
           <Badge
             variant="outline"
             className="border-transparent bg-background/90 shadow-sm backdrop-blur"
           >
             {data.sites.length} sites
           </Badge>
-        ) : null}
-        {data?.clientSites.length ? (
+        )}
+        {data.clientSites.length > 0 && (
           <Badge
             variant="outline"
             className="border-transparent bg-background/90 shadow-sm backdrop-blur"
           >
             {data.clientSites.length} clients
           </Badge>
-        ) : null}
-        {data?.anomalies.length ? (
+        )}
+        {data.routes.length > 0 && (
           <Badge
             variant="outline"
-            className="border-transparent bg-background/90 shadow-sm backdrop-blur"
+            className="border-transparent bg-background/90 text-amber-600 shadow-sm backdrop-blur dark:text-amber-400"
           >
-            {data.anomalies.length} anomalies
+            {data.routes.length} tournée(s) VRAC
           </Badge>
-        ) : null}
-        {data ? (
+        )}
+        {data.anomalies.length > 0 && (
           <Badge
             variant="outline"
-            className="border-transparent bg-background/90 shadow-sm backdrop-blur"
+            className="border-transparent bg-background/90 text-red-500 shadow-sm backdrop-blur"
           >
-            {formatTm(data.vrac.totalTM)}
+            {data.anomalies.length} alerte(s)
           </Badge>
-        ) : null}
+        )}
+        <Badge
+          variant="outline"
+          className="border-transparent bg-background/90 shadow-sm backdrop-blur"
+        >
+          {formatTm(data.vrac.totalTM)}
+        </Badge>
       </div>
 
-      {!isReady && !loadFailed ? (
+      {!isReady && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/40 text-sm text-muted-foreground backdrop-blur-[1px]">
           Chargement de la carte ArcGIS...
         </div>
-      ) : null}
-
-      {data && data.sites.length > 0 ? (
-        <div className="pointer-events-none absolute bottom-20 left-4 max-w-[240px] rounded-2xl bg-background/70 p-3 text-xs shadow-sm backdrop-blur-md">
-          <p className="font-medium text-foreground/90">Réseau logistique</p>
-          <div className="mt-2 space-y-2">
-            {Object.entries(
-              data.sites.reduce(
-                (acc, s) => {
-                  acc[s.type] = (acc[s.type] ?? 0) + 1
-                  return acc
-                },
-                {} as Record<string, number>,
-              ),
-            )
-              .filter(([, count]) => count > 0)
-              .map(([type, count]) => (
-                <div
-                  key={type}
-                  className="flex items-center justify-between gap-3"
-                >
-                  <span className="inline-flex items-center gap-2 text-muted-foreground">
-                    <span className="shrink-0">
-                      <LegendSiteIcon type={type as SiteType} mapTheme={mapTheme} />
-                    </span>
-                    {type}
-                  </span>
-                  <span className="font-medium text-foreground">{count}</span>
-                </div>
-              ))}
-          </div>
-        </div>
-      ) : null}
-
-      {loadFailed ? (
-        <div className="absolute inset-x-4 top-16 rounded-lg bg-background/95 px-3 py-2 text-sm text-amber-700 shadow-sm backdrop-blur dark:text-amber-300">
-          La carte ArcGIS n'a pas pu charger. Vérifie la clé API et les
-          restrictions de domaine.
-        </div>
-      ) : null}
+      )}
     </div>
   )
 }

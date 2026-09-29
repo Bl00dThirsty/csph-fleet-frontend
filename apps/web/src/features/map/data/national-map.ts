@@ -4,6 +4,7 @@ import { clientSites, type ClientSiteView } from './client-sites'
 import { sites, type Site } from '../../sites/data/sites'
 import { regionsForMap, type RegionSummary } from '../lib/regions'
 import { aggregateVracVolume, type VracSummary } from '../lib/vrac-volume'
+import { getAllVracRoutes, type VracTourRoute } from './itineraries'
 
 export interface NationalMapView {
   sites: readonly Site[]
@@ -12,6 +13,7 @@ export interface NationalMapView {
   regions: readonly RegionSummary[]
   anomalies: readonly GeoAnomalyView[]
   vrac: VracSummary
+  routes: readonly VracTourRoute[]
 }
 
 export function getNationalMapView(overrides: Partial<NationalMapView> = {}): NationalMapView {
@@ -22,5 +24,6 @@ export function getNationalMapView(overrides: Partial<NationalMapView> = {}): Na
     regions: overrides.regions ?? regionsForMap(),
     anomalies: overrides.anomalies ?? getGeoAnomalies(),
     vrac: overrides.vrac ?? aggregateVracVolume(),
+    routes: overrides.routes ?? getAllVracRoutes(),
   }
 }

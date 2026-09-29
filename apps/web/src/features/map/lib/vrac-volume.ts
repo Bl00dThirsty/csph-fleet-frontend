@@ -7,8 +7,9 @@ export interface VracSummary {
   activeTruckCount: number
 }
 
-export function aggregateVracVolume(): VracSummary {
-  const vracTrucks: Truck[] = getTrucks().filter(
+export function aggregateVracVolume(trucksForVrac?: Truck[]): VracSummary {
+  const sourceTrucks = trucksForVrac ?? getTrucks()
+  const vracTrucks: Truck[] = sourceTrucks.filter(
     (t) => t.type === 'VRAC' && (t.max_volume ?? 0) > 0,
   )
   let totalTM = 0
