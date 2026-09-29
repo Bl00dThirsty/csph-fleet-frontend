@@ -1,13 +1,18 @@
 import { useMemo } from 'react'
+import { getRouteApi } from '@tanstack/react-router'
 import { CheckCircle2, Clock, Receipt } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { KpiTile, PageShell, SectionCard } from '@/components/layout/page'
 import { RedressementsTable } from './components/redressements-table'
 import { getRedressements, getRedressementSummary } from './data/redressements'
 
+const route = getRouteApi('/_authenticated/redressements/')
+
 export function RedressementsPage() {
   const rows = useMemo(() => getRedressements(), [])
   const summary = useMemo(() => getRedressementSummary(rows), [rows])
+  const search = route.useSearch()
+  const navigate = route.useNavigate()
 
   return (
     <PageShell>
@@ -25,7 +30,7 @@ export function RedressementsPage() {
         />
       </div>
       <SectionCard>
-        <RedressementsTable rows={rows} />
+        <RedressementsTable rows={rows} search={search} navigate={navigate} />
       </SectionCard>
     </PageShell>
   )

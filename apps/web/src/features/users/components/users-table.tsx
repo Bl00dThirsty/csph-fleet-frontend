@@ -12,6 +12,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { cn } from '@/lib/utils'
+import { toFilterArray } from '@/lib/table-filters'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   Table,
@@ -61,8 +62,8 @@ export function UsersTable({
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: false },
     columnFilters: [
-      { columnId: 'role', searchKey: 'role', type: 'string' },
-      { columnId: 'status', searchKey: 'status', type: 'string' },
+      { columnId: 'role', searchKey: 'role', type: 'array', deserialize: toFilterArray },
+      { columnId: 'status', searchKey: 'status', type: 'array', deserialize: toFilterArray },
     ],
   })
 

@@ -2,7 +2,7 @@
 import type { ClientSite, Region, Site } from '@lpg/types'
 import { field, type FieldConfig, type FormValues } from '@/components/entity-crud'
 
-const REGION_OPTIONS: { label: string; value: string }[] = (
+export const REGION_OPTIONS: { label: string; value: string }[] = (
   ['ADAMAOUA', 'CENTRE', 'EST', 'EXTREMENORD', 'LITTORAL', 'NORD', 'NORDOUEST', 'OUEST', 'SUD', 'SUDOUEST'] as Region[]
 ).map((r) => ({ label: r, value: r }))
 

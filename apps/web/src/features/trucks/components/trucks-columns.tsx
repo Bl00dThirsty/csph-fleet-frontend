@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -116,8 +117,7 @@ export function getTrucksColumns({
       cell: ({ row }) => (
         <LongText className='max-w-44'>{row.original.tenant_name}</LongText>
       ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Entreprise' },
       enableSorting: false,
       enableGrouping: true,
@@ -130,8 +130,7 @@ export function getTrucksColumns({
       cell: ({ row }) => (
         <LongText className='max-w-44'>{row.original.region}</LongText>
       ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Region' },
       enableSorting: false,
       enableGrouping: true,
@@ -164,8 +163,7 @@ export function getTrucksColumns({
           </Badge>
         )
       },
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Statut' },
       enableSorting: false,
       enableHiding: false,

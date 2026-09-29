@@ -9,14 +9,13 @@ import {
   getGroupedRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  type ColumnFiltersState,
   type GroupingState,
-  type PaginationState,
   type SortingState,
   type VisibilityState,
   useReactTable,
 } from '@tanstack/react-table'
 import { cn } from '@/lib/utils'
+import { toFilterArray } from '@/lib/table-filters'
 import {
   Table,
   TableBody,
@@ -26,6 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   getRfidTagLocationOptions,
   rfidTagStatusOptions,
@@ -36,6 +36,8 @@ import { DataTableBulkActions as RfidTagsBulkActions } from './data-table-bulk-a
 
 type RfidTagsTableProps = {
   data: RfidTagView[]
+  search: Record<string, unknown>
+  navigate: NavigateFn
   onOpenDetails: (tag: RfidTagView) => void
   onEdit?: (tag: RfidTagView) => void
   onDelete?: (tag: RfidTagView) => void
@@ -43,6 +45,8 @@ type RfidTagsTableProps = {
 
 export function RfidTagsTable({
   data,
+  search,
+  navigate,
   onOpenDetails,
   onEdit,
   onDelete,
@@ -50,10 +54,22 @@ export function RfidTagsTable({
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
+  const {
+    columnFilters,
+    onColumnFiltersChange,
+    pagination,
+    onPaginationChange,
+    ensurePageInRange,
+  } = useTableUrlState({
+    search,
+    navigate,
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
+    globalFilter: { enabled: false },
+    columnFilters: [
+      { columnId: 'tag_id', searchKey: 'q', type: 'string' },
+      { columnId: 'status', searchKey: 'status', type: 'array', deserialize: toFilterArray },
+      { columnId: 'location', searchKey: 'location', type: 'array', deserialize: toFilterArray },
+    ],
   })
   const [grouping, setGrouping] = useState<GroupingState>([])
   const [expanded, setExpanded] = useState({})
@@ -80,8 +96,8 @@ export function RfidTagsTable({
     },
     enableRowSelection: true,
     enableGrouping: true,
-    onPaginationChange: setPagination,
-    onColumnFiltersChange: setColumnFilters,
+    onPaginationChange,
+    onColumnFiltersChange,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -98,11 +114,8 @@ export function RfidTagsTable({
   })
 
   useEffect(() => {
-    setPagination((prev) => ({
-      ...prev,
-      pageIndex: Math.min(prev.pageIndex, Math.max(table.getPageCount() - 1, 0)),
-    }))
-  }, [table.getPageCount()])
+    ensurePageInRange(table.getPageCount())
+  }, [table, ensurePageInRange])
 
   return (
     <div

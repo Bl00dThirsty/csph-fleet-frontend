@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -83,8 +84,7 @@ export function getRecomputeColumns(): ColumnDef<RiskScoreView>[] {
           {entityTypeLabels[row.original.entityType]}
         </LongText>
       ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Type entité' },
       enableSorting: false,
       enableGrouping: true,
@@ -124,8 +124,7 @@ export function getRecomputeColumns(): ColumnDef<RiskScoreView>[] {
           </Badge>
         )
       },
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Niveau' },
       enableSorting: false,
       enableHiding: false,

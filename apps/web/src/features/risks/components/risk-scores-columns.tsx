@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell } from '@/lib/table-filters'
 import { Badge, DataTableColumnHeader } from '@lpg/ui'
 import {
   type RiskScoreView,
@@ -45,6 +46,7 @@ export function getRiskScoreColumns(): ColumnDef<RiskScoreView>[] {
         <Badge className={LEVEL_CLASS[row.original.level]}>{riskLevelLabels[row.original.level]}</Badge>
       ),
       meta: { label: 'Niveau' },
+      filterFn: arrIncludesCell,
       enableGrouping: true,
     },
     {

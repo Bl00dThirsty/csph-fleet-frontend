@@ -737,48 +737,71 @@ export function useNationalMapData(): NationalMapDataResult {
     const orgsById: Record<string, string> = {}
     for (const org of orgs) orgsById[org.id] = org.name
 
-    const sites = getSites(rawSites, orgsById).filter((s) => s.latitude !== 0 || s.longitude !== 0)
-    const clientSites = buildClientSiteViews(rawClientSites, orgsById).filter(
-      (cs) => cs.latitude !== 0 || cs.longitude !== 0,
-    )
-    const ungeocodedCount =
-      (rawSites.length + rawClientSites.length) - (sites.length + clientSites.length)
+    // View rows carry a French region LABEL ("Centre"); the centroid join needs
+    // the Region CODE ("CENTRE") to match `RegionSummary.code`. Read the code
+    // off the raw rows, never off the view rows.
+    const geoOf = (row: { geo_point?: [number, number] | number[] | null }) => {
+      const geo = row.geo_point as [number, number] | null | undefined
+      return geo ? { longitude: geo[0] ?? 0, latitude: geo[1] ?? 0 } : null
+    }
 
-    // Region position comes from live site coordinates; counts are aggregated here.
-    const points = [
-      ...sites.map((s) => ({ region: s.region as Region, longitude: s.longitude, latitude: s.latitude })),
-      ...clientSites.map((cs) => ({ region: cs.region as Region, longitude: cs.longitude, latitude: cs.latitude })),
+    const regionRows = (Object.keys(REGION_LABELS) as Region[]).map((code) => ({
+      code,
+      name: REGION_LABELS[code] ?? code,
+    }))
+
+    const regionPoints = [
+      ...rawSites.flatMap((s) => {
+        const geo = geoOf(s)
+        return geo ? [{ region: s.region, ...geo }] : []
+      }),
+      ...rawClientSites.flatMap((cs) => {
+        const geo = geoOf(cs)
+        return geo ? [{ region: cs.region, ...geo }] : []
+      }),
     ]
-    const regionRows = Object.keys(REGION_LABELS).map((code) => ({
-      code: code as Region,
-      name: REGION_LABELS[code as Region] ?? code,
-    }))
-    const regions = computeRegionCentroids(regionRows, points).map((r) => ({
-      ...r,
-      siteCount: sites.filter((s) => s.region === r.name).length,
-      clientSiteCount: clientSites.filter((cs) => cs.region === r.name).length,
-      anomalyCount: anomalies.length,
-    }))
 
-    const siteGeoRefs = rawSites
-      .filter((s) => s.geo_point)
-      .map((s) => {
-        const geo = s.geo_point as [number, number]
-        return { id: s.id, name: s.name, longitude: geo[0], latitude: geo[1] }
-      })
-    const clientSiteGeoRefs = rawClientSites
-      .filter((cs) => cs.geo_point)
-      .map((cs) => {
-        const geo = cs.geo_point as [number, number]
-        return { id: cs.id, name: cs.name, longitude: geo[0], latitude: geo[1] }
-      })
+    const sites = getSites(rawSites, orgsById)
+    const clientSites = buildClientSiteViews(rawClientSites, orgsById)
+
+    const siteGeoRefs = rawSites.flatMap((s) => {
+      const geo = geoOf(s)
+      return geo ? [{ id: s.id, name: s.name, ...geo }] : []
+    })
+    const clientSiteGeoRefs = rawClientSites.flatMap((cs) => {
+      const geo = geoOf(cs)
+      return geo ? [{ id: cs.id, name: cs.name, ...geo }] : []
+    })
+    const joinedAnomalies = joinAnomalyGeo(anomalies, siteGeoRefs, clientSiteGeoRefs)
+
+    // Count by Region code against the RAW rows.
+    const countByRegion = (rows: readonly { region: Region }[]) => {
+      const counts: Partial<Record<Region, number>> = {}
+      for (const row of rows) counts[row.region] = (counts[row.region] ?? 0) + 1
+      return counts
+    }
+    const siteCounts = countByRegion(rawSites)
+    const clientSiteCounts = countByRegion(rawClientSites)
+    const anomalyCounts = countByRegion(
+      anomalies.filter((a) => a.site_id ?? a.client_site_id),
+    )
+
+    const ungeocodedCount =
+      rawSites.length - siteGeoRefs.length + (rawClientSites.length - clientSiteGeoRefs.length)
+
+    const regions = computeRegionCentroids(regionRows, regionPoints).map((r) => ({
+      ...r,
+      siteCount: siteCounts[r.code] ?? 0,
+      clientSiteCount: clientSiteCounts[r.code] ?? 0,
+      anomalyCount: anomalyCounts[r.code] ?? 0,
+    }))
 
     return {
       view: getNationalMapView({
         sites,
         clientSites,
         regions,
-        anomalies: joinAnomalyGeo(anomalies, siteGeoRefs, clientSiteGeoRefs),
+        anomalies: joinedAnomalies,
         zones: [],
         vrac: buildVracSummary(vehicles, orgs),
       }),
@@ -1327,8 +1350,12 @@ with:
       const stale = map.layers.removeAll()
       for (const layer of stale) layer.destroy()
       map.addMany([
-        createClusteredLayer('sites', sitesToGeoJSON(data.sites), mapTheme),
-        createClusteredLayer('clientSites', clientSitesToGeoJSON(data.clientSites), mapTheme),
+        createClusteredLayer('sites', sitesToGeoJSON(plottableSites), mapTheme),
+        createClusteredLayer(
+          'clientSites',
+          clientSitesToGeoJSON(plottableClientSites),
+          mapTheme,
+        ),
       ])
       if (layers.regions) map.add(layers.regions)
       if (layers.anomalies) map.add(layers.anomalies)
@@ -1336,6 +1363,19 @@ with:
 ```
 
 Then delete the now-unused `siteGraphics` and `clientGraphics` local variables from that effect — they were only consumed by the removed `addMany` calls, and `noUnusedLocals` will fail the build if they are left behind. The `createSiteGraphics` import at the top of the file becomes unused for the same reason; remove it too.
+
+Define the two plottable lists at the top of that same effect, right after the existing `if (!isReady || !data) return` guard:
+
+```ts
+    // View rows yield 0,0 when the row has no `geo_point`. A real Cameroon
+    // coordinate is never exactly 0,0, so this drops the un-geocoded instead
+    // of stacking them in the Gulf of Guinea. The count is surfaced to the
+    // user through the `ungeocodedCount` prop.
+    const isPlottable = (p: { latitude: number; longitude: number }) =>
+      p.latitude !== 0 || p.longitude !== 0
+    const plottableSites = data.sites.filter(isPlottable)
+    const plottableClientSites = data.clientSites.filter(isPlottable)
+```
 
 - [ ] **Step 6: Verify**
 

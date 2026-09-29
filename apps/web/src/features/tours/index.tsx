@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { PageShell, SectionCard } from '@/components/layout/page'
@@ -13,8 +13,7 @@ import { ToursTable } from './components/tours-table'
 import { TourCreateDialog } from './components/tour-create-dialog'
 import { type TourSlice } from './data/tour-activity'
 
-const SLICES: { value: TourSlice; label: string }[] = [
-  { value: 'ALL', label: 'Toutes' },
+const SLICES: { value: TourSlice; label: string }[] = [  { value: 'ALL', label: 'Toutes' },
   { value: 'INTERNAL', label: 'Internes' },
   { value: 'EXTERNAL', label: 'Externalisées' },
   { value: 'PENDING', label: 'En attente' },
@@ -22,8 +21,12 @@ const SLICES: { value: TourSlice; label: string }[] = [
   { value: 'HISTORY', label: 'Historique' },
 ]
 
+const toursRoute = getRouteApi('/_authenticated/tours/')
+
 export function ToursPage() {
   const navigate = useNavigate()
+  const search = toursRoute.useSearch()
+  const tableNavigate = toursRoute.useNavigate()
   const user = useAuthStore((s) => s.user)
   const activeRole = useRoleStore((s) => s.activeRole)
   const role = activeRole || (user?.system_role as Role) || 'SUPERADMIN'
@@ -101,6 +104,8 @@ export function ToursPage() {
           rows={tours}
           selectedTripId={selectedTrip?.id}
           onOpenDetails={(row) => openDetail(row.id)}
+          search={search}
+          navigate={tableNavigate}
         />
       </SectionCard>
 

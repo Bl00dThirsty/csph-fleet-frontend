@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell } from '@/lib/table-filters'
 import { Badge, DataTableColumnHeader } from '@lpg/ui'
 import {
   type AnomalyView,
@@ -92,6 +93,7 @@ export function getAnomalyColumns(): ColumnDef<AnomalyView>[] {
       ),
       enableHiding: false,
       meta: { label: 'Statut' },
+      filterFn: arrIncludesCell,
       enableGrouping: true,
     },
   ]

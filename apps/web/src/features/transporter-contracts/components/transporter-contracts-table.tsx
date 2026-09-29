@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -13,26 +15,48 @@ import { cn } from '@/lib/utils'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import { getTransporterContractColumns } from './transporter-contracts-columns'
 import type { TransporterContractView } from '../data/transporter-contracts'
 
-export function TransporterContractsTable({ rows }: { rows: TransporterContractView[] }) {
+export function TransporterContractsTable({ rows, search, navigate }: { rows: TransporterContractView[]; search: Record<string, unknown>; navigate: NavigateFn }) {
   const [sorting, setSorting] = useState<SortingState>([])
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
+  const {
+    columnFilters,
+    onColumnFiltersChange,
+    pagination,
+    onPaginationChange,
+    ensurePageInRange,
+  } = useTableUrlState({
+    search,
+    navigate,
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
+    globalFilter: { enabled: false },
+    columnFilters: [
+      { columnId: 'reference', searchKey: 'q', type: 'string' },
+    ],
+  })
 
   const columns = useMemo(() => getTransporterContractColumns(), [])
 
   const table = useReactTable({
     data: rows,
     columns,
-    state: { sorting, pagination },
+    state: { sorting, pagination, columnFilters },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
+    onPaginationChange,
+    onColumnFiltersChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
   })
+
+  useEffect(() => {
+    ensurePageInRange(table.getPageCount())
+  }, [table, ensurePageInRange])
 
   return (
     <div className='flex flex-1 flex-col gap-4'>

@@ -1,5 +1,7 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { Badge, DataTableColumnHeader } from '@lpg/ui'
+import { arrIncludesCell, dateInRange } from '@/lib/table-filters'
+import { formatFrDate } from '@/lib/utils'
 import {
   type TourActivity,
   type TourneeStatus,
@@ -73,6 +75,7 @@ export function getToursColumns({
         </Badge>
       ),
       meta: { label: 'Mode' },
+      filterFn: arrIncludesCell,
       enableGrouping: true,
     },
     {
@@ -123,6 +126,17 @@ export function getToursColumns({
       ),
       enableHiding: false,
       meta: { label: 'Statut' },
+      filterFn: arrIncludesCell,
+      enableGrouping: true,
+    },
+    {
+      accessorKey: 'startedAt',
+      header: 'Début',
+      cell: ({ row }) => (
+        <span className='whitespace-nowrap text-xs'>{formatFrDate(row.original.startedAt)}</span>
+      ),
+      meta: { label: 'Début' },
+      filterFn: dateInRange,
       enableGrouping: true,
     },
   ]

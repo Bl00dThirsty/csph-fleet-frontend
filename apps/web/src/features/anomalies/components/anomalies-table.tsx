@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
   getExpandedRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getGroupedRowModel,
   getPaginationRowModel,
@@ -13,26 +15,44 @@ import {
 } from '@tanstack/react-table'
 import { DataTablePagination, DataTableToolbar } from '@lpg/ui'
 import { cn } from '@/lib/utils'
+import { toFilterArray } from '@/lib/table-filters'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import { getAnomalyColumns } from './anomalies-columns'
 import { anomalyStatusOptions, type AnomalyView } from '../data/anomalies'
 
-export function AnomaliesTable({ rows }: { rows: AnomalyView[] }) {
+export function AnomaliesTable({ rows, search, navigate }: { rows: AnomalyView[]; search: Record<string, unknown>; navigate: NavigateFn }) {
   const [sorting, setSorting] = useState<SortingState>([])
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
   const [grouping, setGrouping] = useState<GroupingState>([])
   const [expanded, setExpanded] = useState({})
+  const {
+    columnFilters,
+    onColumnFiltersChange,
+    pagination,
+    onPaginationChange,
+    ensurePageInRange,
+  } = useTableUrlState({
+    search,
+    navigate,
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
+    globalFilter: { enabled: false },
+    columnFilters: [
+      { columnId: 'reference', searchKey: 'q', type: 'string' },
+      { columnId: 'status', searchKey: 'status', type: 'array', deserialize: toFilterArray },
+    ],
+  })
 
   const columns = useMemo(() => getAnomalyColumns(), [])
 
   const table = useReactTable({
     data: rows,
     columns,
-    state: { sorting, pagination, grouping, expanded },
+    state: { sorting, pagination, grouping, expanded, columnFilters },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
+    onPaginationChange,
+    onColumnFiltersChange,
     onGroupingChange: setGrouping,
     onExpandedChange: setExpanded,
     enableGrouping: true,
@@ -42,7 +62,13 @@ export function AnomaliesTable({ rows }: { rows: AnomalyView[] }) {
     getExpandedRowModel: getExpandedRowModel(),
     getGroupedRowModel: getGroupedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
   })
+
+  useEffect(() => {
+    ensurePageInRange(table.getPageCount())
+  }, [table, ensurePageInRange])
 
   return (
     <div className='flex flex-1 flex-col gap-4'>

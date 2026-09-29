@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { KpiTile, PageShell, SectionCard } from '@/components/layout/page'
 import { AnomaliesTable } from './components/anomalies-table'
 import { getAnomalies, getAnomalySummary, type AnomalyTrack } from './data/anomalies'
+import type { NavigateFn } from '@/hooks/use-table-url-state'
 
 const TRACK_TITLES: Record<AnomalyTrack, string> = {
   ALL: 'Anomalies',
@@ -18,7 +19,7 @@ const TRACK_DESCRIPTIONS: Record<AnomalyTrack, string> = {
   TECHNICAL: 'Incidents IoT, GPS, PDA et infrastructure — à résoudre.',
 }
 
-export function AnomaliesPage({ track = 'ALL' }: { track?: AnomalyTrack }) {
+export function AnomaliesPage({ track = 'ALL', search, navigate }: { track?: AnomalyTrack; search: Record<string, unknown>; navigate: NavigateFn }) {
   const rows = useMemo(() => getAnomalies(track), [track])
   const summary = useMemo(() => getAnomalySummary(rows), [rows])
 
@@ -36,7 +37,7 @@ export function AnomaliesPage({ track = 'ALL' }: { track?: AnomalyTrack }) {
         <KpiTile label='Critiques' value={String(summary.critiques)} icon={<AlertTriangle className='size-4 text-rose-500' />} />
       </div>
       <SectionCard>
-        <AnomaliesTable rows={rows} />
+        <AnomaliesTable rows={rows} search={search} navigate={navigate} />
       </SectionCard>
     </PageShell>
   )

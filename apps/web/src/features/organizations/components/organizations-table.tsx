@@ -12,6 +12,7 @@ import {
   type VisibilityState,
   useReactTable,
 } from '@tanstack/react-table'
+import { arrIncludesCell, toFilterArray } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -87,12 +88,14 @@ export function OrganizationsTable({
         header: 'Type',
         cell: ({ row }: { row: { original: Organization } }) => <Badge variant='outline'>{orgTypeLabel(row.original.type)}</Badge>,
         meta: { label: 'Type' },
+        filterFn: arrIncludesCell,
       },
       {
         accessorKey: 'status',
         header: 'Statut',
         cell: ({ row }: { row: { original: Organization } }) => <Badge variant='outline'>{orgStatusLabel(row.original.status)}</Badge>,
         meta: { label: 'Statut' },
+        filterFn: arrIncludesCell,
       },
       {
         accessorKey: 'region',
@@ -139,8 +142,8 @@ export function OrganizationsTable({
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: false },
     columnFilters: [
-      { columnId: 'type', searchKey: 'type', type: 'string' },
-      { columnId: 'status', searchKey: 'status', type: 'string' },
+      { columnId: 'type', searchKey: 'type', type: 'array', deserialize: toFilterArray },
+      { columnId: 'status', searchKey: 'status', type: 'array', deserialize: toFilterArray },
       { columnId: 'region', searchKey: 'region', type: 'string' },
     ],
   })

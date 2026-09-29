@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -115,8 +116,7 @@ export function getRfidTagsColumns({
           </StatusIndicator>
         )
       },
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Statut' },
       enableSorting: false,
       enableHiding: false,
@@ -130,8 +130,7 @@ export function getRfidTagsColumns({
       cell: ({ row }) => (
         <LongText className='max-w-44'>{row.original.location}</LongText>
       ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Localisation' },
       enableSorting: false,
       enableGrouping: true,

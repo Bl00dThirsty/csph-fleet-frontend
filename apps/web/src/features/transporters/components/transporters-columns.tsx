@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { Badge, Checkbox } from '@lpg/ui'
 import { DataTableColumnHeader } from '@lpg/ui'
@@ -78,8 +79,7 @@ export function getTransportersColumns({
           {row.original.is_active ? 'Actif' : 'Inactif'}
         </Badge>
       ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Statut' },
       enableSorting: false,
       enableHiding: false,

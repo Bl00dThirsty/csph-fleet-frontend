@@ -12,6 +12,7 @@ import {
   type VisibilityState,
   useReactTable,
 } from '@tanstack/react-table'
+import { arrIncludesCell, toFilterArray } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -140,6 +141,7 @@ export function CertificatesTable({
           </Badge>
         ),
         meta: { label: 'Statut' },
+        filterFn: arrIncludesCell,
         enableHiding: false,
       },
       {
@@ -175,7 +177,7 @@ export function CertificatesTable({
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: false },
     columnFilters: [
-      { columnId: 'status', searchKey: 'status', type: 'string' },
+      { columnId: 'status', searchKey: 'status', type: 'array', deserialize: toFilterArray },
     ],
   })
 

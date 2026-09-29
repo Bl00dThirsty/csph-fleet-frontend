@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -110,8 +111,7 @@ export function getDriversColumns({
       cell: ({ row }) => (
         <LongText className='max-w-44'>{row.original.org_name}</LongText>
       ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Entreprise' },
       enableSorting: false,
       enableGrouping: true,
@@ -159,9 +159,11 @@ export function getDriversColumns({
         )
       },
       filterFn: (row, _id, value) => {
-        const isActive = row.original.is_active
-        const expected = (value as string[]).includes('ACTIVE')
-        return isActive === expected
+        const selected = (Array.isArray(value) ? value : [value])
+          .map(String)
+          .filter(Boolean)
+        if (selected.length === 0) return true
+        return selected.includes(row.original.is_active ? 'ACTIVE' : 'INACTIVE')
       },
       meta: { label: 'Statut' },
       enableSorting: false,

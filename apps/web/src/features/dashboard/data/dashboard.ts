@@ -6,8 +6,8 @@ import {
   type RouteTripView,
   type TourActivity,
 } from '@/features/tours/data/tour-activity'
-import { sites, type Site } from '@/features/sites/data/sites'
-import { trucks, type Truck } from '@/features/trucks/data/trucks'
+import { type Site } from '@/features/sites/data/sites'
+import { type Truck } from '@/features/trucks/data/trucks'
 import { quantityInfo } from '@/features/trucks/lib/quantity'
 
 export interface DashboardSource {
@@ -486,7 +486,7 @@ function buildCadence(
 }
 
 function buildReserveSites(
-  siteRows: readonly Site[] = sites,
+  siteRows: readonly Site[] = [],
   routeViews: readonly RouteTripView[] = getRouteTripsView(),
 ): DashboardReserveSite[] {
   return Object.entries(reserveConfigBySiteId)
@@ -590,7 +590,7 @@ function buildReserveSites(
 
 function buildFleetSummaries(
   totalTransportedTM: number,
-  truckRows: readonly Truck[] = trucks,
+  truckRows: readonly Truck[] = [],
   routeViews: readonly RouteTripView[] = getRouteTripsView(),
 ) {
   const fleets = new Map<
@@ -932,18 +932,19 @@ function buildRecentActivities(
 
 export function buildDashboardView(role?: string, _orgId?: string, orgName?: string, source: DashboardSource = {}): DashboardView {
   const routeViews = source.routes ?? getRouteTripsView()
-  const truckRows = source.trucks ?? trucks
-  const siteRows = source.sites ?? sites
+  const truckRows = source.trucks ?? []
+  const siteRows = source.sites ?? []
   const isMarketer = role === 'MARKETEUR'
   const isTransporter = role === 'TRANSPORTEUR'
 
   let filteredRoutes = routeViews
+  // Scope strictly: an org-scoped role that matches nothing sees an empty
+  // dashboard. Falling back to `routeViews.slice(0, 2)` would leak another
+  // org's tours into a MARKETEUR/TRANSPORTEUR view.
   if (isMarketer) {
     filteredRoutes = routeViews.filter((r) => r.marketeur_name.toLowerCase().includes('sctm') || r.marketeur_name.toLowerCase().includes('gpl') || (orgName && r.marketeur_name.toLowerCase().includes(orgName.toLowerCase())))
-    if (filteredRoutes.length === 0) filteredRoutes = routeViews.slice(0, 2)
   } else if (isTransporter) {
     filteredRoutes = routeViews.filter((r) => (r.transporter_name && r.transporter_name.toLowerCase().includes('express')) || (orgName && r.transporter_name?.toLowerCase().includes(orgName.toLowerCase())))
-    if (filteredRoutes.length === 0) filteredRoutes = routeViews.slice(0, 2)
   }
 
   const routeSummary = buildRouteSummary(filteredRoutes)

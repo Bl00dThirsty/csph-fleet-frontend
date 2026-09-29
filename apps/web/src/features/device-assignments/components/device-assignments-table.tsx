@@ -12,6 +12,7 @@ import {
   type VisibilityState,
   useReactTable,
 } from '@tanstack/react-table'
+import { arrIncludesCell, toFilterArray } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -84,6 +85,7 @@ export function DeviceAssignmentsTable({
           <Badge>{deviceTypeLabel(row.original.deviceType)}</Badge>
         ),
         meta: { label: 'Type' },
+        filterFn: arrIncludesCell,
       },
       {
         accessorKey: 'assigneeName',
@@ -97,9 +99,10 @@ export function DeviceAssignmentsTable({
         accessorKey: 'status',
         header: 'État',
         cell: ({ row }: { row: { original: DeviceAssignmentView } }) => (
-          <Badge variant='outline'>{deviceStatusLabel(row.original.status)}</Badge>
-        ),
-        meta: { label: 'État' },
+            <Badge variant='outline'>{deviceStatusLabel(row.original.status)}</Badge>
+          ),
+          meta: { label: 'État' },
+          filterFn: arrIncludesCell,
       },
       {
         accessorKey: 'batteryLevel',
@@ -139,8 +142,8 @@ export function DeviceAssignmentsTable({
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: false },
     columnFilters: [
-      { columnId: 'deviceType', searchKey: 'type', type: 'string' },
-      { columnId: 'status', searchKey: 'status', type: 'string' },
+      { columnId: 'deviceType', searchKey: 'type', type: 'array', deserialize: toFilterArray },
+      { columnId: 'status', searchKey: 'status', type: 'array', deserialize: toFilterArray },
     ],
   })
 

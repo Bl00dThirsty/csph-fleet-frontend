@@ -1,4 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell, dateInRange } from '@/lib/table-filters'
+import { formatFrDate } from '@/lib/utils'
 import { Badge, DataTableColumnHeader } from '@lpg/ui'
 import { type Pickup, type PickupStatus, pickupStatusLabels } from '../data/pickups'
 
@@ -54,9 +56,9 @@ export function getPickupsColumns({
     },
     {
       accessorKey: 'requested_quantity',
-      header: 'Quantité (kg)',
+      header: 'Quantité (TM)',
       cell: ({ row }) => new Intl.NumberFormat('fr-FR').format(row.original.requested_quantity),
-      meta: { label: 'Quantité (kg)' },
+      meta: { label: 'Quantité (TM)' },
       enableGrouping: true,
     },
     {
@@ -68,7 +70,18 @@ export function getPickupsColumns({
         </Badge>
       ),
       meta: { label: 'Statut' },
+      filterFn: arrIncludesCell,
       enableHiding: false,
+      enableGrouping: true,
+    },
+    {
+      accessorKey: 'requested_at',
+      header: 'Demandé le',
+      cell: ({ row }) => (
+        <span className='whitespace-nowrap text-xs'>{formatFrDate(row.original.requested_at)}</span>
+      ),
+      meta: { label: 'Demandé le' },
+      filterFn: dateInRange,
       enableGrouping: true,
     },
   ]

@@ -9,14 +9,13 @@ import {
   getGroupedRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  type ColumnFiltersState,
   type GroupingState,
-  type PaginationState,
   type SortingState,
   type VisibilityState,
   useReactTable,
 } from '@tanstack/react-table'
 import { cn } from '@/lib/utils'
+import { toFilterArray } from '@/lib/table-filters'
 import {
   Table,
   TableBody,
@@ -26,12 +25,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import { driverStatusOptions, type DriverView } from '../data/drivers'
 import { getDriversColumns } from './drivers-columns'
 import { DataTableBulkActions as DriversBulkActions } from './data-table-bulk-actions'
 
 type DriversTableProps = {
   data: DriverView[]
+  search: Record<string, unknown>
+  navigate: NavigateFn
   orgOptions: { label: string; value: string }[]
   onViewDetails: (driver: DriverView) => void
   onEdit?: (driver: DriverView) => void
@@ -40,6 +42,8 @@ type DriversTableProps = {
 
 export function DriversTable({
   data,
+  search,
+  navigate,
   orgOptions,
   onViewDetails,
   onEdit,
@@ -48,10 +52,22 @@ export function DriversTable({
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
+  const {
+    columnFilters,
+    onColumnFiltersChange,
+    pagination,
+    onPaginationChange,
+    ensurePageInRange,
+  } = useTableUrlState({
+    search,
+    navigate,
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
+    globalFilter: { enabled: false },
+    columnFilters: [
+      { columnId: 'full_name', searchKey: 'q', type: 'string' },
+      { columnId: 'org_name', searchKey: 'org', type: 'array', deserialize: toFilterArray },
+      { columnId: 'is_active', searchKey: 'status', type: 'array', deserialize: toFilterArray },
+    ],
   })
   const [grouping, setGrouping] = useState<GroupingState>([])
   const [expanded, setExpanded] = useState({})
@@ -76,8 +92,8 @@ export function DriversTable({
     },
     enableRowSelection: true,
     enableGrouping: true,
-    onPaginationChange: setPagination,
-    onColumnFiltersChange: setColumnFilters,
+    onPaginationChange,
+    onColumnFiltersChange,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -94,11 +110,8 @@ export function DriversTable({
   })
 
   useEffect(() => {
-    setPagination((prev) => ({
-      ...prev,
-      pageIndex: Math.min(prev.pageIndex, Math.max(table.getPageCount() - 1, 0)),
-    }))
-  }, [table.getPageCount()])
+    ensurePageInRange(table.getPageCount())
+  }, [table, ensurePageInRange])
 
   return (
     <div

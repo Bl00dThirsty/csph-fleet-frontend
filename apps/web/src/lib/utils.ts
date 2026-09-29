@@ -1,8 +1,21 @@
 import { type ClassValue, clsx } from 'clsx'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+/**
+ * French day-month-year date for table cells and filter labels
+ * (`01 avr. 2026`). Missing or invalid input renders an em dash.
+ */
+export function formatFrDate(value: string | Date | null | undefined): string {
+  if (!value) return '—'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return format(date, 'dd MMM yyyy', { locale: fr })
 }
 
 export function sleep(ms: number = 1000) {

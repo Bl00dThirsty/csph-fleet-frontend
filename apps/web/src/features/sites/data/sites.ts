@@ -62,7 +62,8 @@ function viewTypeFromSeed(
   site: CuratedSite | ClientSite,
   orgName: string,
 ): SiteType {
-  const functions = 'functions' in site ? (site.functions ?? []) : []
+  const rawFunctions = 'functions' in site ? site.functions : undefined
+  const functions = Array.isArray(rawFunctions) ? rawFunctions : []
   if (orgName.includes('SCDP')) return 'scdp'
   if (functions.includes('CENTREEMPLISSEUR')) return 'filling-center'
   if (functions.includes('POINTAPPROVISIONABLE')) return 'delivery-point'
@@ -99,7 +100,8 @@ function descriptionFor(
 }
 
 function orgId(site: CuratedSite | ClientSite): string {
-  return 'org_id' in site ? (site as CuratedSite).org_id : (site as ClientSite).client_org_id
+  const raw = 'org_id' in site ? (site as CuratedSite).org_id : (site as ClientSite).client_org_id
+  return raw ?? ''
 }
 
 /**
@@ -120,11 +122,11 @@ export function getSites(
       'status' in site ? (site as CuratedSite).status : undefined,
       'is_active' in site ? (site as ClientSite).is_active : true,
     )
-    const region = (site as any).region
+    const region = ((site as any).region as string | undefined) ?? 'CENTRE'
     const geo = (site as any).geo_point as [number, number] | undefined
     return {
-      id: site.id,
-      name: site.name,
+      id: site.id ?? '',
+      name: site.name ?? '',
       type,
       city: cityFromAddress((site as any).address),
       region: REGION_LABELS[region] ?? region,

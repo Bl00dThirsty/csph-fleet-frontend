@@ -122,18 +122,19 @@ export function getTrucks(
     const org = activeOrgs[idx % Math.max(activeOrgs.length, 1)]
     const driver = drivers[Math.min(idx, Math.max(drivers.length - 1, 0))]
     const tour = toursByVehicle.get(v.id)
-    const seedIdx = seededIndex(v.license_plate, REGIONS.length)
+    const seedKey = v.license_plate ?? v.id ?? ''
+    const seedIdx = seededIndex(seedKey, REGIONS.length)
     const region: Region = REGIONS[seedIdx] ?? 'CENTRE'
     return {
-      id: v.id,
-      license_plate: v.license_plate,
-      type: v.type,
+      id: v.id ?? '',
+      license_plate: v.license_plate ?? '',
+      type: v.type ?? 'VRAC',
       tournee_status: tour?.status ?? 'PLANNED',
       max_volume: v.max_volume,
       max_bottle_count: v.max_bottle_count,
       certificate_number: v.certificate_number,
       certificate_expiry_at: v.certificate_expiry_at,
-      org_id: v.org_id,
+      org_id: v.org_id ?? '',
       tenant_name: org?.name ?? '—',
       region,
       assigned_driver: driverName(driver),
@@ -142,8 +143,8 @@ export function getTrucks(
       delivered_quantity: tour?.delivered_quantity ?? null,
       risk_level: 'FAIBLE',
       current_location: '—',
-      lat: 3.4 + ((seededIndex(v.id, 100) * 0.27) % 1.0),
-      lng: 10.8 + ((seededIndex(v.id, 100) * 0.41) % 1.4),
+      lat: 3.4 + ((seededIndex(v.id ?? '', 100) * 0.27) % 1.0),
+      lng: 10.8 + ((seededIndex(v.id ?? '', 100) * 0.41) % 1.4),
     }
   })
 }

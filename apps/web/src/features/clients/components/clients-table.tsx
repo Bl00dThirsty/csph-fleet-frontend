@@ -12,6 +12,7 @@ import {
   type VisibilityState,
   useReactTable,
 } from '@tanstack/react-table'
+import { arrIncludesCell, toFilterArray } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -112,6 +113,7 @@ export function ClientsTable({
         header: 'Statut',
         cell: ({ row }: { row: { original: ClientView } }) => <Badge variant='outline'>{clientStatusLabel(row.original.status)}</Badge>,
         meta: { label: 'Statut' },
+        filterFn: arrIncludesCell,
       },
       {
         id: 'actions',
@@ -146,7 +148,7 @@ export function ClientsTable({
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: false },
     columnFilters: [
-      { columnId: 'status', searchKey: 'status', type: 'string' },
+      { columnId: 'status', searchKey: 'status', type: 'array', deserialize: toFilterArray },
       { columnId: 'region', searchKey: 'region', type: 'string' },
     ],
   })

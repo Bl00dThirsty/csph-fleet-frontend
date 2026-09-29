@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router'
+import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { PageShell } from '@/components/layout/page'
 import { PageHeader } from '@/components/layout/page-header'
 import { SectionCard } from '@/components/layout/page'
@@ -10,10 +10,14 @@ function isActive(tour: TourActivity): boolean {
   return tour.tourneeStatus === 'INPROGRESS' || tour.tourneeStatus === 'CHECKPOINTACTIVE'
 }
 
+const followUpRoute = getRouteApi('/_authenticated/tour-tracking/')
+
 export function FollowUpPage() {
   const allTours = getTourActivity('ALL')
   const tours = allTours.filter(isActive)
   const navigate = useNavigate()
+  const search = followUpRoute.useSearch()
+  const tableNavigate = followUpRoute.useNavigate()
   const selectedTrip = tours[0]
   const selectedTripId = selectedTrip?.id
 
@@ -42,6 +46,8 @@ export function FollowUpPage() {
           rows={tours}
           selectedTripId={selectedTripId}
           onOpenDetails={(row) => openDetail(row.id)}
+          search={search}
+          navigate={tableNavigate}
         />
       </SectionCard>
     </PageShell>

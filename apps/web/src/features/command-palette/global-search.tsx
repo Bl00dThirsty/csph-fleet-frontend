@@ -12,10 +12,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRoleStore } from '@/store/role-store'
 import { getSidebarData } from '@/config/rbac/sidebar-by-role'
 import type { Role } from '@lpg/permissions'
-import { trucks } from '@/features/trucks/data/trucks'
-import { sites } from '@/features/sites/data/sites'
-import { transporters } from '@/features/transporters/transporters'
-import { marketers } from '@/features/marketers/data/marketers'
+import { getTrucks, type Truck } from '@/features/trucks/data/trucks'
+import { getSites, type Site } from '@/features/sites/data/sites'
+import type { Organization, Vehicle } from '@lpg/types'
+import { organizationsHooks, sitesHooks, vehiclesHooks } from '@/lib/api/use-resources'
 import { getRouteTripsView } from '@/features/tours/data/tour-activity'
 import { TruckIcon, MapPin, Handshake, Building2, FileText, Home, Clock } from 'lucide-react'
 
@@ -84,8 +84,21 @@ function getSitesUrlForRole(role: Role): string | null {
   return null
 }
 
-function buildLiveIndex(role: Role): SearchItem[] {
+function buildLiveIndex(
+  role: Role,
+  rows: {
+    vehicles: readonly Vehicle[]
+    orgs: readonly Organization[]
+    sites: readonly Site[]
+  },
+): SearchItem[] {
   const items: SearchItem[] = []
+  const orgsById: Record<string, string> = {}
+  for (const org of rows.orgs) orgsById[org.id] = org.name
+  const trucks = getTrucks([...rows.vehicles], [...rows.orgs])
+  const transporters = rows.orgs.filter((o) => o.type === 'TRANSPORTEUR')
+  const marketers = rows.orgs.filter((o) => o.type === 'MARKETEUR')
+  const sites = getSites([...rows.sites], orgsById)
 
   try {
     const data = getSidebarData(role)
@@ -190,7 +203,22 @@ export function GlobalSearch() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
 
-  const items = useMemo(() => buildLiveIndex(activeRole), [activeRole])
+  // Only fetch the live entity rows while the palette is open — searching
+  // trucks/sites/orgs server-side on every keystroke would be wasteful, and
+  // building the index once per open keeps it consistent.
+  const vehiclesQuery = vehiclesHooks.useList({ limit: 100 }, { enabled: open })
+  const orgsQuery = organizationsHooks.useList({ limit: 200 }, { enabled: open })
+  const sitesQuery = sitesHooks.useList({ limit: 200 }, { enabled: open })
+
+  const items = useMemo(
+    () =>
+      buildLiveIndex(activeRole, {
+        vehicles: vehiclesQuery.data ?? [],
+        orgs: orgsQuery.data ?? [],
+        sites: sitesQuery.data ?? [],
+      }),
+    [activeRole, vehiclesQuery.data, orgsQuery.data, sitesQuery.data],
+  )
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

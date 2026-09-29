@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -10,29 +12,53 @@ import {
 } from '@tanstack/react-table'
 import { DataTablePagination, DataTableToolbar } from '@lpg/ui'
 import { cn } from '@/lib/utils'
+import { toFilterArray } from '@/lib/table-filters'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import { getRiskScoreColumns } from './risk-scores-columns'
 import { riskLevelOptions, type RiskScoreView } from '../data/risk-scores'
 
-export function RiskScoresTable({ rows }: { rows: RiskScoreView[] }) {
+export function RiskScoresTable({ rows, search, navigate }: { rows: RiskScoreView[]; search: Record<string, unknown>; navigate: NavigateFn }) {
   const [sorting, setSorting] = useState<SortingState>([])
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
+  const {
+    columnFilters,
+    onColumnFiltersChange,
+    pagination,
+    onPaginationChange,
+    ensurePageInRange,
+  } = useTableUrlState({
+    search,
+    navigate,
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
+    globalFilter: { enabled: false },
+    columnFilters: [
+      { columnId: 'entity_name', searchKey: 'q', type: 'string' },
+      { columnId: 'level', searchKey: 'level', type: 'array', deserialize: toFilterArray },
+    ],
+  })
 
   const columns = useMemo(() => getRiskScoreColumns(), [])
 
   const table = useReactTable({
     data: rows,
     columns,
-    state: { sorting, pagination },
+    state: { sorting, pagination, columnFilters },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
+    onPaginationChange,
+    onColumnFiltersChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
   })
+
+  useEffect(() => {
+    ensurePageInRange(table.getPageCount())
+  }, [table, ensurePageInRange])
 
   return (
     <div className='flex flex-1 flex-col gap-4'>
