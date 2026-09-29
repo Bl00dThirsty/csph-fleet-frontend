@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useAuthStore } from '@/store/auth-store'
 import {
   MapIcon,
   Globe,
@@ -27,6 +28,7 @@ export function NationalMapPage() {
   const [mapTheme, setMapTheme] = useState<MapTheme>('light')
   const [showFilters, setShowFilters] = useState(false)
   const [selectedRouteCode, setSelectedRouteCode] = useState<string>('TR-VRAC-DLA-001')
+  const userRole = useAuthStore((s) => s.user?.system_role) ?? 'CSPH'
 
   const routes = useMemo(() => getAllVracRoutes(), [])
   const currentRoute = useMemo(
@@ -88,7 +90,7 @@ export function NationalMapPage() {
             </Badge>
 
             <Badge variant="secondary" className="font-semibold text-xs py-1 px-2.5">
-              SUPERADMIN
+              {userRole}
             </Badge>
           </div>
         </div>
