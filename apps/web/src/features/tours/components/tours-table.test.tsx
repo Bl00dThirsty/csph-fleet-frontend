@@ -41,18 +41,18 @@ const ROWS = [
 
 describe('ToursTable filters and group-by', () => {
   it('search narrows rows by reference', async () => {
-    const { getByPlaceholder, getByText, queryByText } = await render(
+    const { getByPlaceholder, getByText, queryByText } = (await render(
       <ToursTable rows={ROWS} onOpenDetails={vi.fn()} />,
-    )
+    )) as any
     await userEvent.fill(getByPlaceholder('Rechercher une reference, marketeur...'), 'TRP-EXT')
     await expect.element(getByText('TRP-EXT-009')).toBeInTheDocument()
     expect(queryByText('TOT-MVAN-001')).toBeNull()
   })
 
   it('status facet keeps only matching rows', async () => {
-    const { getByRole, getByText, queryByText } = await render(
+    const { getByRole, getByText, queryByText } = (await render(
       <ToursTable rows={ROWS} onOpenDetails={vi.fn()} />,
-    )
+    )) as any
     await userEvent.click(getByRole('button', { name: /Statut/ }))
     await userEvent.click(getByRole('option', { name: 'En transit' }))
     await expect.element(getByText('TOT-MVAN-002')).toBeInTheDocument()
