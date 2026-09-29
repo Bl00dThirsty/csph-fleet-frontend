@@ -18,6 +18,7 @@ export type MapLayerKey =
   | 'regions'
   | 'anomalies'
   | 'vrac'
+  | 'routes'
 
 export interface MapLayerSpec {
   key: MapLayerKey
@@ -35,16 +36,18 @@ export function getInitialLayers(): Record<MapLayerKey, boolean> {
     regions: true,
     anomalies: false,
     vrac: true,
+    routes: true,
   }
 }
 
 export const LAYER_LABELS: Record<MapLayerKey, string> = {
-  sites: 'Sites marchands',
-  clientSites: 'Sites clients',
+  sites: 'Sites marchands & Dépôts',
+  clientSites: 'Sites clients (Livraisons)',
   zones: 'Zones géographiques',
-  regions: 'Régions',
-  anomalies: 'Anomalies',
+  regions: 'Régions (10)',
+  anomalies: 'Alertes & Anomalies',
   vrac: 'Volume VRAC (TM)',
+  routes: 'Itinéraires VRAC (Traçabilité)',
 }
 
 export function buildLayerSpecs(
@@ -125,6 +128,16 @@ export function buildLayerSpecs(
       enabled: true,
       marker: { icon: 'vrac', color: '#F59E0B', size: 16 },
       content: () => buildVracPopupContent(view.vrac, theme),
+    })
+  }
+
+  if (toggles.routes) {
+    specs.push({
+      key: 'routes',
+      label: LAYER_LABELS.routes,
+      enabled: true,
+      marker: { icon: 'routes', color: '#F97316', size: 18 },
+      content: () => 'Itinéraire VRAC sous surveillance temps réel',
     })
   }
 

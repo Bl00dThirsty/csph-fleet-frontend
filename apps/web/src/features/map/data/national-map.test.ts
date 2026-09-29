@@ -67,6 +67,7 @@ const inline: NationalMapView = {
     },
   ],
   vrac: { totalTM: 12.5, unit: 'TM', activeTruckCount: 2 },
+  routes: [],
 }
 
 describe('getNationalMapView', () => {
