@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -105,8 +106,7 @@ export function getDevicesColumns({
           </Badge>
         )
       },
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Type' },
       enableSorting: false,
       enableGrouping: true,
@@ -126,8 +126,7 @@ export function getDevicesColumns({
           </StatusIndicator>
         )
       },
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Statut' },
       enableSorting: false,
       enableHiding: false,
@@ -141,8 +140,7 @@ export function getDevicesColumns({
       cell: ({ row }) => (
         <LongText className='max-w-44'>{row.original.orgName}</LongText>
       ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Organisation' },
       enableSorting: false,
       enableGrouping: true,

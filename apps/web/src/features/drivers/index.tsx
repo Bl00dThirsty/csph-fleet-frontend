@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { getRouteApi } from '@tanstack/react-router'
+import { Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Main } from '@/components/layout/main'
 import {
   getDriverById,
@@ -20,6 +20,8 @@ import { toast } from 'sonner'
 export { getDriverById, getDriversView, drivers }
 export type { Driver, DriverView }
 
+const route = getRouteApi('/_authenticated/drivers/')
+
 export function buildDriverOrgOptions(drivers: readonly DriverView[]) {
   return Array.from(new Set(drivers.map((driver) => driver.org_name))).map(
     (org_name) => ({
@@ -32,7 +34,8 @@ export function buildDriverOrgOptions(drivers: readonly DriverView[]) {
 export function DriversPage() {
   const [, setVersion] = useState(0)
   const drivers = getDriversView()
-  const [search, setSearch] = useState('')
+  const search = route.useSearch()
+  const navigate = route.useNavigate()
   const [detailsDriver, setDetailsDriver] = useState<DriverView | null>(null)
   const crud = useEntityCrud<Driver>('drivers', 'drivers', ['drivers'])
 
@@ -58,23 +61,6 @@ export function DriversPage() {
 
   const orgOptions = useMemo(() => buildDriverOrgOptions(drivers), [drivers])
 
-  const filteredDrivers = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    if (!query) return drivers
-    return drivers.filter((driver) =>
-      [
-        driver.full_name,
-        driver.first_name,
-        driver.last_name,
-        driver.license_number,
-        driver.org_name,
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query)
-    )
-  }, [search, drivers])
-
   return (
     <Main className='space-y-4 bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900'>
       <section className='rounded-2xl border-transparent bg-background/88 p-4 shadow-sm backdrop-blur-sm'>
@@ -87,15 +73,6 @@ export function DriversPage() {
             <TopStat label='Entreprises' value={String(orgOptions.length)} />
           </div>
 
-          <div className='relative w-full sm:w-[310px]'>
-            <Search className='pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder='Rechercher un chauffeur, permis, entreprise…'
-              className='h-9 ps-9'
-            />
-          </div>
           {crud.perm.canCreate && (
             <Button onClick={crud.openCreate}>
               <Plus className='mr-1 h-4 w-4' /> Nouveau chauffeur
@@ -127,11 +104,13 @@ export function DriversPage() {
             variant='outline'
             className='border-transparent bg-muted/35 text-foreground'
           >
-            {filteredDrivers.length} / {drivers.length} chauffeurs
+            {drivers.length} chauffeurs
           </Badge>
         </div>
         <DriversTable
-          data={filteredDrivers}
+          data={drivers}
+          search={search}
+          navigate={navigate}
           orgOptions={orgOptions}
           onViewDetails={handleViewDetails}
           onEdit={(d) => crud.openEdit(d as unknown as Driver)}

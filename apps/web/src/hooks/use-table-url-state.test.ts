@@ -373,4 +373,52 @@ describe('useTableUrlState', () => {
       tag: 'x|y',
     })
   })
+
+  it('builds daterange column filters from a period search param', async () => {
+    const navigate = vi.fn() as Mock<NavigateFn>
+    const { result } = await renderHook(() =>
+      useTableUrlState({
+        search: { period: '2026-04-01..2026-04-30' },
+        navigate,
+        pagination: { defaultPage: 1, defaultPageSize: 10 },
+        columnFilters: [
+          { columnId: 'started_at', searchKey: 'period', type: 'daterange' },
+        ],
+      })
+    )
+
+    expect(result.current.columnFilters).toEqual([
+      { id: 'started_at', value: { from: '2026-04-01', to: '2026-04-30' } },
+    ])
+  })
+
+  it('serializes daterange filters back to a period search param and clears it', async () => {
+    const navigate = vi.fn() as Mock<NavigateFn>
+    const { result, act } = await renderHook(() =>
+      useTableUrlState({
+        search: {},
+        navigate,
+        pagination: { defaultPage: 1, defaultPageSize: 10 },
+        columnFilters: [
+          { columnId: 'started_at', searchKey: 'period', type: 'daterange' },
+        ],
+      })
+    )
+
+    await act(() => {
+      result.current.onColumnFiltersChange([
+        { id: 'started_at', value: { from: '2026-04-01', to: '2026-04-30' } },
+      ])
+    })
+    expect(applyLastSearchFn(navigate, {})).toMatchObject({
+      period: '2026-04-01..2026-04-30',
+    })
+
+    await act(() => {
+      result.current.onColumnFiltersChange([])
+    })
+    expect(applyLastSearchFn(navigate, { period: '2026-04-01..2026-04-30' })).toMatchObject({
+      period: undefined,
+    })
+  })
 })

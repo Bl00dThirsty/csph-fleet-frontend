@@ -41,21 +41,13 @@ export function orgName(id: string): string {
   return organizations.find((o) => o.id === id)?.name ?? id
 }
 
-function seededIndex(key: string, modulus: number): number {
-  let h = 0
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0
-  return h % modulus
-}
-
-const EXTRA_STATUSES: readonly PickupStatus[] = ['DRAFT', 'VALIDATED', 'CANCELLED']
-const EXTRA_TIMES: readonly [string, string | null, string | null, string | null][] = [
-  ['2024-10-02T08:00:00Z', '2024-10-03T10:00:00Z', null, null],
-  ['2024-10-08T08:00:00Z', '2024-10-09T09:00:00Z', null, null],
-  ['2024-09-20T08:00:00Z', null, null, null],
-]
-
+/**
+ * Live-only accessor over the pickups store rows. No seeded extras: when the
+ * backend returns nothing (or RBAC denies the query) this returns [] and the
+ * pages render their empty states instead of crashing on fabricated joins.
+ */
 export function getPickups(): Pickup[] {
-  const base = pickup_requests.map((p, i) => ({
+  return pickup_requests.map((p, i) => ({
     id: p.id,
     reference: `PU-${1001 + i}`,
     source_name: siteName(p.source_site_id),
@@ -70,30 +62,6 @@ export function getPickups(): Pickup[] {
     completed_at: p.status === 'COMPLETED' ? p.updated_at ?? null : null,
     proof_url: null,
   }))
-
-  const extras: Pickup[] = EXTRA_STATUSES.map((status, idx) => {
-    const source = sites[seededIndex(`src-${idx}`, Math.max(sites.length, 1))] ?? sites[0]!
-    const destination = sites[seededIndex(`dst-${idx}`, Math.max(sites.length, 1))] ?? sites[Math.min(1, sites.length - 1)]!
-    const marketeur = organizations.find((o) => o.type === 'MARKETEUR') ?? organizations[0]!
-    const [requestedAt, validatedAt, startedAt, completedAt] = EXTRA_TIMES[idx]!
-    return {
-      id: `pickup-extra-${idx}`,
-      reference: `PU-${2001 + idx}`,
-      source_name: source.name,
-      destination_name: destination.name,
-      marketeur_name: marketeur.name,
-      requested_quantity: 18000 + seededIndex(`qty-${idx}`, 4) * 18000,
-      approved_quantity: status === 'VALIDATED' ? 18000 + seededIndex(`qty-${idx}`, 4) * 18000 : null,
-      pickup_status: status,
-      requested_at: requestedAt,
-      validated_at: validatedAt,
-      started_at: startedAt,
-      completed_at: completedAt,
-      proof_url: null,
-    }
-  })
-
-  return [...base, ...extras]
 }
 
 export function getPickupSummary(rows: Pickup[]) {

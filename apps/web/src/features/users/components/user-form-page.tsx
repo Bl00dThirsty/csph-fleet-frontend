@@ -54,7 +54,8 @@ import {
   type PermissionCode,
   type Role,
 } from '@lpg/permissions'
-import { sites } from '@/features/sites/data/sites'
+import { getSites } from '@/features/sites/data/sites'
+import { sitesHooks, organizationsHooks } from '@/lib/api/use-resources'
 import { useAuthStore } from '@/store/auth-store'
 import { useRoleStore } from '@/store/role-store'
 import { useUsersStore } from '@/store/users-store'
@@ -222,12 +223,22 @@ export function UserFormPage({ initialUser, mode }: UserFormPageProps) {
     return organizationOptions.find((o) => o.id === form.org_id)
   }, [organizationOptions, form.org_id])
 
-  // Sites list
+  // Site assignment options, from live rows only.
+  const sitesQuery = sitesHooks.useList({ limit: 200 })
+  const orgsQuery = organizationsHooks.useList({ limit: 200 })
+
   const availableSites = useMemo(() => {
-    if (!form.org_id) return sites
-    const orgSites = sites.filter((s) => s.operator?.toLowerCase().includes(currentOrg?.name?.toLowerCase() || ''))
-    return orgSites.length > 0 ? orgSites : sites
-  }, [form.org_id, currentOrg])
+    const orgRows = orgsQuery.data ?? []
+    const orgsById: Record<string, string> = {}
+    for (const org of orgRows) orgsById[org.id] = org.name
+    const all = getSites(sitesQuery.data ?? [], orgsById)
+    if (!form.org_id) return all
+    const orgNameLower = currentOrg?.name?.toLowerCase() ?? ''
+    const orgSites = orgNameLower
+      ? all.filter((s) => s.operator.toLowerCase().includes(orgNameLower))
+      : all
+    return orgSites.length > 0 ? orgSites : all
+  }, [form.org_id, currentOrg, sitesQuery.data, orgsQuery.data])
 
   // Active base permissions from system_role
   const baseRolePermissions = useMemo<readonly PermissionCode[]>(() => {

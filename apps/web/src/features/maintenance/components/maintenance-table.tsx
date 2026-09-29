@@ -12,6 +12,7 @@ import {
   type VisibilityState,
   useReactTable,
 } from '@tanstack/react-table'
+import { arrIncludesCell, toFilterArray } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -71,6 +72,7 @@ export function MaintenanceTable({
           <Badge variant='outline'>{itemTypeLabel(row.original.itemType)}</Badge>
         ),
         meta: { label: 'Type' },
+        filterFn: arrIncludesCell,
       },
       {
         accessorKey: 'reason',
@@ -87,6 +89,7 @@ export function MaintenanceTable({
           </Badge>
         ),
         meta: { label: 'État' },
+        filterFn: arrIncludesCell,
       },
       {
         accessorKey: 'orgName',
@@ -118,8 +121,8 @@ export function MaintenanceTable({
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: false },
     columnFilters: [
-      { columnId: 'itemType', searchKey: 'type', type: 'string' },
-      { columnId: 'status', searchKey: 'status', type: 'string' },
+      { columnId: 'itemType', searchKey: 'type', type: 'array', deserialize: toFilterArray },
+      { columnId: 'status', searchKey: 'status', type: 'array', deserialize: toFilterArray },
     ],
   })
 
@@ -172,6 +175,7 @@ export function MaintenanceTable({
             options: [
               { label: 'Critique', value: 'CRITIQUE' },
               { label: 'À traiter', value: 'AOA' },
+              { label: 'Résolu', value: 'RESOLU' },
             ],
           },
         ]}

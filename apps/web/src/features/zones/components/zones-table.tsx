@@ -12,6 +12,7 @@ import {
   type VisibilityState,
   useReactTable,
 } from '@tanstack/react-table'
+import { arrIncludesCell, toFilterArray } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -26,7 +27,7 @@ import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { ZoneView } from '../data/zones'
-import { getZoneOptions } from '../data/zones'
+import { REGION_OPTIONS } from '@/features/sites/data/sites-crud'
 
 type ZonesTableProps = {
   data: ZoneView[]
@@ -56,6 +57,7 @@ export function ZonesTable({
           </Badge>
         ),
         meta: { label: 'Code' },
+        filterFn: arrIncludesCell,
       },
       {
         accessorKey: 'name',
@@ -107,6 +109,7 @@ export function ZonesTable({
     globalFilter: { enabled: false },
     columnFilters: [
       { columnId: 'name', searchKey: 'name', type: 'string' },
+      { columnId: 'code', searchKey: 'code', type: 'array', deserialize: toFilterArray },
     ],
   })
 
@@ -148,7 +151,7 @@ export function ZonesTable({
           {
             columnId: 'code',
             title: 'Région',
-            options: getZoneOptions(),
+            options: REGION_OPTIONS,
           },
         ]}
       />

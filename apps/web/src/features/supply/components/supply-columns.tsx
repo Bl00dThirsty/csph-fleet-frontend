@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell } from '@/lib/table-filters'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -91,8 +92,7 @@ export function getSupplyColumns(): ColumnDef<SupplyRequest>[] {
       cell: ({ row }) => (
         <LongText className='max-w-44'>{row.original.sourceSiteName}</LongText>
       ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Site source' },
       enableSorting: false,
       enableGrouping: true,
@@ -105,8 +105,7 @@ export function getSupplyColumns(): ColumnDef<SupplyRequest>[] {
       cell: ({ row }) => (
         <LongText className='max-w-44'>{row.original.destSiteName}</LongText>
       ),
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Site destination' },
       enableSorting: false,
       enableGrouping: true,
@@ -148,8 +147,7 @@ export function getSupplyColumns(): ColumnDef<SupplyRequest>[] {
           </Badge>
         )
       },
-      filterFn: (row, id, value) =>
-        (value as string[]).includes(String(row.getValue(id))),
+      filterFn: arrIncludesCell,
       meta: { label: 'Statut' },
       enableSorting: false,
       enableHiding: false,

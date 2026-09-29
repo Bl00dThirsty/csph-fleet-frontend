@@ -13,7 +13,7 @@ import type {
   Vehicle,
 } from '@lpg/types'
 import { sites, type Site } from '@/features/sites/data/sites'
-import { trucks, type Truck } from '@/features/trucks/data/trucks'
+import { getTrucks, type Truck } from '@/features/trucks/data/trucks'
 import {
   anomalies as defaultAnomalies,
   checkpoints as defaultCheckpoints,
@@ -214,14 +214,25 @@ function buildSiteIndex(
   return index
 }
 
-// `trucks` lives behind an import cycle: this module <- tours-store, and
-// trucks/data/trucks imports tours-store back. Building the index at module scope
-// reads `trucks` while it is still uninitialised, which is `undefined` outside a
-// browser bundle and crashes the map suites on import. Build it on first use.
-let truckIndex: Map<string, Truck> | null = null
-function truckById(): Map<string, Truck> {
-  truckIndex ??= new Map(trucks.map((truck) => [truck.id, truck]))
-  return truckIndex
+// Join scope: truck + site lookups resolved from live rows (explicit opts or
+// entity-data defaults), built once per batch call. The previous module-scope
+// `truckIndex` over the static `trucks` placeholder could never resolve a live
+// vehicle and returned `undefined` for empty ids, crashing consumers.
+
+export interface TourJoinScope {
+  truckIndex: Map<string, Truck>
+  siteIndex: Map<string, Site>
+}
+
+function buildJoinScope(opts: TourEnrichOptions): TourJoinScope {
+  const orgRows = opts.organizations ?? defaultOrganizations
+  const vehicleRows = opts.vehicles ?? defaultVehicles
+  const clientSiteRows = opts.clientSites ?? defaultClientSites
+  const truckRows = opts.trucks ?? getTrucks(vehicleRows, orgRows)
+  return {
+    truckIndex: new Map(truckRows.map((truck) => [truck.id, truck])),
+    siteIndex: buildSiteIndex(opts.sites, clientSiteRows),
+  }
 }
 
 function requireSite(siteId: string, index: Map<string, Site>): Site {
@@ -257,25 +268,35 @@ function placeholderSite(): Site {
   }
 }
 
-function requireTruck(truckId: string): Truck {
-  if (!truckId) return trucks[0]!
-  const truck = truckById().get(truckId)
-  if (truck) return truck
-  return (
-    trucks[0] ?? {
-      id: truckId,
-      license_plate: 'LT-0000-XX',
-      tenant_name: 'SCTM Interne',
-      org_id: 'org-0002-sctm-0000-000000000001',
-      region: 'LITTORAL' as const,
-      type: 'VRAC' as const,
-      tournee_status: 'INPROGRESS' as const,
-      requested_quantity: 20,
-      lat: 4.0511,
-      lng: 9.7679,
-      risk_level: 'FAIBLE' as const,
-    }
-  )
+/**
+ * Honest placeholder for a tour whose vehicle is unknown (not yet synced,
+ * denied by RBAC, or referencing a deleted row). Never invents an org,
+ * quantity, or position — labels render as '—' and coords stay at 0,0 so map
+ * layers can filter it out. Guaranteed defined: joins must never crash pages.
+ */
+function unknownTruck(truckId: string): Truck {
+  return {
+    id: truckId,
+    license_plate: '—',
+    type: 'VRAC',
+    tournee_status: 'PLANNED',
+    org_id: '',
+    tenant_name: '—',
+    region: 'CENTRE',
+    requested_quantity: 0,
+    risk_level: 'FAIBLE',
+    current_location: '—',
+    lat: 0,
+    lng: 0,
+  }
+}
+
+function requireTruck(truckId: string, index: Map<string, Truck>): Truck {
+  if (truckId) {
+    const truck = index.get(truckId)
+    if (truck) return truck
+  }
+  return unknownTruck(truckId)
 }
 
 export function routeStatusFromTournee(status: TourneeStatus): RouteTripStatus {
@@ -344,6 +365,9 @@ export interface TourEnrichOptions {
   scanEvents?: ScanEvent[]
   users?: TourPerson[]
   now?: Date
+  /** Prebuilt view-model rows — when omitted they are derived from the raw rows above. */
+  trucks?: Truck[]
+  sites?: Site[]
 }
 
 export const checkpointStatusLabels: Record<CheckpointStatus, string> = {
@@ -573,7 +597,7 @@ function fallbackTruckId(
   )
   if (candidates.length > 0) return candidates[0]!.id
   const any = rows.find((v) => v.type === tourType && v.is_active)
-  return any?.id ?? trucks[0]?.id ?? ''
+  return any?.id ?? rows[0]?.id ?? ''
 }
 
 function buildEvents(
@@ -751,18 +775,18 @@ export function normalizeTour(raw: any): DeliveryTour {
   }
 }
 
-function buildView(tourRaw: DeliveryTour, opts: TourEnrichOptions = {}): TourActivity {
+function buildView(tourRaw: DeliveryTour, opts: TourEnrichOptions = {}, scope?: TourJoinScope): TourActivity {
   const tour = normalizeTour(tourRaw)
   const checkpointRows = opts.checkpoints ?? defaultCheckpoints
   const anomalyRows = opts.anomalies ?? defaultAnomalies
   const settingRows = opts.settings ?? defaultSettings
   const orgRows = opts.organizations ?? defaultOrganizations
   const vehicleRows = opts.vehicles ?? defaultVehicles
-  const clientSiteRows = opts.clientSites ?? defaultClientSites
   const driverRows = opts.drivers ?? defaultDrivers
   const scanRows = opts.scanEvents ?? defaultScanEvents
   const userRows = opts.users ?? defaultUsers
-  const siteIndex = buildSiteIndex(sites, clientSiteRows)
+  const join = scope ?? buildJoinScope(opts)
+  const siteIndex = join.siteIndex
   const tourCheckpoints = checkpointRows.filter(
     (checkpoint) => checkpoint.tournee_id === tour.id || checkpoint.tour_id === tour.id,
   )
@@ -778,7 +802,7 @@ function buildView(tourRaw: DeliveryTour, opts: TourEnrichOptions = {}): TourAct
   const delivered = tour.delivered_quantity ?? (status === 'completed' ? loaded : 0)
   const remaining = Math.max(loaded - delivered, 0)
   const truckId = tour.vehicle_id ?? fallbackTruckId(tour.marketeur_org_id, tour.type, vehicleRows)
-  const truck = requireTruck(truckId)
+  const truck = requireTruck(truckId, join.truckIndex)
   const expectedArrivalAt =
     (stops.length > 0 ? stops[stops.length - 1]?.windowLabel : undefined) ??
     tour.closed_at ??
@@ -906,9 +930,10 @@ function slicePredicate(slice: TourSlice): (tour: DeliveryTour) => boolean {
 export function getTourActivity(slice: TourSlice = 'ALL', opts: TourEnrichOptions = {}): TourActivity[] {
   const tours = useToursStore.getState().tours
   const checkpoints = opts.checkpoints ?? useToursStore.getState().checkpoints
+  const join = buildJoinScope({ ...opts, checkpoints })
   return tours
     .filter(slicePredicate(slice))
-    .map((tour) => buildView(tour, { ...opts, checkpoints }))
+    .map((tour) => buildView(tour, { ...opts, checkpoints }, join))
 }
 
 export function getTourActivityById(id: string, opts: TourEnrichOptions = {}): TourActivity | undefined {
@@ -923,7 +948,8 @@ export function toTourActivities(
   tours: readonly DeliveryTour[],
   opts: TourEnrichOptions = {},
 ): TourActivity[] {
-  return tours.map((tour) => buildView(tour, opts))
+  const join = buildJoinScope(opts)
+  return tours.map((tour) => buildView(tour, opts, join))
 }
 
 export function buildTourActivity(

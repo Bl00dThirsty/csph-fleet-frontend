@@ -1,4 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { arrIncludesCell, dateInRange } from '@/lib/table-filters'
+import { formatFrDate } from '@/lib/utils'
 import { Badge } from '@lpg/ui'
 import { DataTableColumnHeader } from '@/components/data-table'
 import {
@@ -55,6 +57,17 @@ export function getDeclarationColumns(): ColumnDef<DeclarationView>[] {
       ),
       enableHiding: false,
       meta: { label: 'Statut' },
+      filterFn: arrIncludesCell,
+      enableGrouping: true,
+    },
+    {
+      accessorKey: 'submitted_at',
+      header: 'Soumise le',
+      cell: ({ row }) => (
+        <span className='whitespace-nowrap text-xs'>{formatFrDate(row.original.submitted_at)}</span>
+      ),
+      meta: { label: 'Soumise le' },
+      filterFn: dateInRange,
       enableGrouping: true,
     },
     {

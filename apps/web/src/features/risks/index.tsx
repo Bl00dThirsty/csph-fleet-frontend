@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { AlertOctagon, FileWarning, Gauge } from 'lucide-react'
+import type { NavigateFn } from '@/hooks/use-table-url-state'
 import { PageHeader } from '@/components/layout/page-header'
 import { KpiTile, PageShell, SectionCard } from '@/components/layout/page'
 import { RiskScoresTable } from './components/risk-scores-table'
 import { getRiskScores, getRiskSummary } from './data/risk-scores'
 
-export function RiskScoresPage() {
+export function RiskScoresPage({ search, navigate }: { search: Record<string, unknown>; navigate: NavigateFn }) {
   const rows = useMemo(() => getRiskScores(), [])
   const summary = useMemo(() => getRiskSummary(rows), [rows])
 
@@ -22,7 +23,7 @@ export function RiskScoresPage() {
         <KpiTile label='Critique' value={String(summary.critique)} icon={<AlertOctagon className='size-4 text-rose-500' />} />
       </div>
       <SectionCard>
-        <RiskScoresTable rows={rows} />
+        <RiskScoresTable rows={rows} search={search} navigate={navigate} />
       </SectionCard>
     </PageShell>
   )

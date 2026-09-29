@@ -1,5 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { Badge, DataTableColumnHeader } from '@lpg/ui'
+import { arrIncludesCell } from '@/lib/table-filters'
 import type { UserView } from '../data/users'
 import { mfaStatusLabel, userStatusLabel } from '../data/users'
 import { ROLE_LABELS } from '@/config/rbac/roles'
@@ -69,7 +70,7 @@ export function getUsersColumns({
       cell: ({ row }) => (
         <Badge variant='outline'>{ROLE_LABELS[row.original.role]}</Badge>
       ),
-      filterFn: (row, _id, value) => row.original.role === value,
+      filterFn: arrIncludesCell,
       meta: { label: 'Rôle' },
       enableGrouping: true,
     },
@@ -81,7 +82,7 @@ export function getUsersColumns({
       cell: ({ row }) => (
         <Badge variant='outline'>{userStatusLabel(row.original.status)}</Badge>
       ),
-      filterFn: (row, _id, value) => row.original.status === value,
+      filterFn: arrIncludesCell,
       meta: { label: 'Statut' },
       enableGrouping: true,
     },

@@ -1,4 +1,5 @@
 ﻿import { useMemo, useEffect, useState } from 'react'
+import { getRouteApi } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@lpg/ui'
@@ -15,8 +16,12 @@ import type { Role } from '@/config/rbac/roles'
 
 import { useAuthStore } from '@/store/auth-store'
 
+const route = getRouteApi('/_authenticated/pickups/')
+
 export function PickupsPage({ role }: { role: Role }) {
   const user = useAuthStore((s) => s.user)
+  const search = route.useSearch()
+  const navigate = route.useNavigate()
   const storePickups = usePickupsStore((s) => s.pickups)
   const allRows = useMemo(
     () => usePickupsStore.getState().getPickupsView(),
@@ -87,6 +92,8 @@ export function PickupsPage({ role }: { role: Role }) {
       <SectionCard>
         <PickupsTable
           rows={rows}
+          search={search}
+          navigate={navigate}
           onOpenDetails={(row) => {
             if ((role === 'ADMIN' || role === 'SUPERADMIN') && row.pickup_status === 'DRAFT') {
               setValidateOpen(row)

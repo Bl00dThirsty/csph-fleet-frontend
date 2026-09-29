@@ -1,14 +1,19 @@
 import { useMemo } from 'react'
+import { getRouteApi } from '@tanstack/react-router'
 import { AlertTriangle, Coins, FileBarChart, Receipt } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { KpiTile, PageShell, SectionCard } from '@/components/layout/page'
 import { ReconciliationsTable } from './components/reconciliations-table'
 import { getReconciliations, getReconciliationSummary, gapToleranceThreshold } from './data/reconciliations'
 
+const route = getRouteApi('/_authenticated/reconciliations/')
+
 export function ReconciliationsPage() {
   const rows = useMemo(() => getReconciliations(), [])
   const summary = useMemo(() => getReconciliationSummary(rows), [rows])
   const tolerance = gapToleranceThreshold()
+  const search = route.useSearch()
+  const navigate = route.useNavigate()
 
   return (
     <PageShell>
@@ -35,7 +40,7 @@ export function ReconciliationsPage() {
         />
       </div>
       <SectionCard>
-        <ReconciliationsTable rows={rows} />
+        <ReconciliationsTable rows={rows} search={search} navigate={navigate} />
       </SectionCard>
     </PageShell>
   )

@@ -42,7 +42,7 @@ const ROWS = [
 describe('ToursTable filters and group-by', () => {
   it('search narrows rows by reference', async () => {
     const { getByPlaceholder, getByText, queryByText } = (await render(
-      <ToursTable rows={ROWS} onOpenDetails={vi.fn()} />,
+      <ToursTable rows={ROWS} onOpenDetails={vi.fn()} search={{}} navigate={vi.fn()} />,
     )) as any
     await userEvent.fill(getByPlaceholder('Rechercher une reference, marketeur...'), 'TRP-EXT')
     await expect.element(getByText('TRP-EXT-009')).toBeInTheDocument()
@@ -51,7 +51,7 @@ describe('ToursTable filters and group-by', () => {
 
   it('status facet keeps only matching rows', async () => {
     const { getByRole, getByText, queryByText } = (await render(
-      <ToursTable rows={ROWS} onOpenDetails={vi.fn()} />,
+      <ToursTable rows={ROWS} onOpenDetails={vi.fn()} search={{}} navigate={vi.fn()} />,
     )) as any
     await userEvent.click(getByRole('button', { name: /Statut/ }))
     await userEvent.click(getByRole('option', { name: 'En transit' }))
@@ -61,7 +61,7 @@ describe('ToursTable filters and group-by', () => {
   })
 
   it('group-by mode renders one group header per mode', async () => {
-    const screen = await render(<ToursTable rows={ROWS} onOpenDetails={vi.fn()} />)
+    const screen = await render(<ToursTable rows={ROWS} onOpenDetails={vi.fn()} search={{}} navigate={vi.fn()} />)
     await userEvent.selectOptions(screen.getByRole('combobox'), 'execution_mode')
     await expect.element(screen.getByText(/INTERNAL \(2\)/)).toBeInTheDocument()
     await expect.element(screen.getByText(/EXTERNAL \(1\)/)).toBeInTheDocument()

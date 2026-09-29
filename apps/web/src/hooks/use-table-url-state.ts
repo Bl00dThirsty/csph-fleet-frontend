@@ -4,6 +4,7 @@ import type {
   OnChangeFn,
   PaginationState,
 } from '@tanstack/react-table'
+import { deserializeDateRange, serializeDateRange } from '@/lib/table-filters'
 
 type SearchRecord = Record<string, unknown>
 
@@ -42,6 +43,13 @@ type UseTableUrlStateParams = {
         columnId: string
         searchKey: string
         type: 'array'
+        serialize?: (value: unknown) => unknown
+        deserialize?: (value: unknown) => unknown
+      }
+    | {
+        columnId: string
+        searchKey: string
+        type: 'daterange'
         serialize?: (value: unknown) => unknown
         deserialize?: (value: unknown) => unknown
       }
@@ -90,14 +98,21 @@ export function useTableUrlState(
     const collected: ColumnFiltersState = []
     for (const cfg of columnFiltersCfg) {
       const raw = (search as SearchRecord)[cfg.searchKey]
-      const deserialize = cfg.deserialize ?? ((v: unknown) => v)
       if (cfg.type === 'string') {
+        const deserialize = cfg.deserialize ?? ((v: unknown) => v)
         const value = (deserialize(raw) as string) ?? ''
         if (typeof value === 'string' && value.trim() !== '') {
           collected.push({ id: cfg.columnId, value })
         }
+      } else if (cfg.type === 'daterange') {
+        const deserialize = cfg.deserialize ?? deserializeDateRange
+        const value = (deserialize(raw) as { from?: string; to?: string }) ?? {}
+        if (value.from || value.to) {
+          collected.push({ id: cfg.columnId, value })
+        }
       } else {
         // default to array type
+        const deserialize = cfg.deserialize ?? ((v: unknown) => v)
         const value = (deserialize(raw) as unknown[]) ?? []
         if (Array.isArray(value) && value.length > 0) {
           collected.push({ id: cfg.columnId, value })
@@ -167,13 +182,19 @@ export function useTableUrlState(
 
     for (const cfg of columnFiltersCfg) {
       const found = next.find((f) => f.id === cfg.columnId)
-      const serialize = cfg.serialize ?? ((v: unknown) => v)
       if (cfg.type === 'string') {
+        const serialize = cfg.serialize ?? ((v: unknown) => v)
         const value =
           typeof found?.value === 'string' ? (found.value as string) : ''
         patch[cfg.searchKey] =
           value.trim() !== '' ? serialize(value) : undefined
+      } else if (cfg.type === 'daterange') {
+        const serialize = cfg.serialize ?? serializeDateRange
+        const value = (found?.value as { from?: unknown; to?: unknown }) ?? {}
+        patch[cfg.searchKey] =
+          value.from || value.to ? serialize(value) : undefined
       } else {
+        const serialize = cfg.serialize ?? ((v: unknown) => v)
         const value = Array.isArray(found?.value)
           ? (found!.value as unknown[])
           : []
